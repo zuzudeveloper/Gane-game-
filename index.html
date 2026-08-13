@@ -437,7 +437,10 @@ body::before{
 .mp-side{padding:20px;border-right:1px solid rgba(255,255,255,.08);background:#0c0c0c}.mp-side h2{font:800 34px/.9 'Barlow Condensed';margin:0 0 8px}.mp-side p{font:700 8px/1.5 Inter;color:#737373}.mp-form{display:grid;gap:8px;margin-top:16px}.mp-form input,.mp-form select{width:100%;padding:11px;background:#050505;color:#fff;border:1px solid #262626;outline:none;font:700 10px Inter}.mp-btn{padding:12px;border:1px solid #333;background:#151515;color:#fff;font:800 9px Inter;letter-spacing:1px}.mp-btn.primary{background:#ff4655;border-color:#ff4655}.mp-code{margin-top:12px;padding:12px;background:#111;border:1px solid #292929;text-align:center;font:800 26px 'Barlow Condensed';letter-spacing:5px}.mp-main{padding:20px;display:flex;flex-direction:column;min-width:0}.mp-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.mp-head h3{margin:0;font:800 28px 'Barlow Condensed'}.mp-status{font:800 8px Inter;color:#8b8b8b}.mp-teams{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;flex:1;min-height:0}.mp-team{border:1px solid #252525;background:#0c0c0c;padding:12px;display:flex;flex-direction:column}.mp-team.blue{border-top:2px solid #4aa3ff}.mp-team.red{border-top:2px solid #ff4655}.mp-team h4{margin:0 0 8px;font:800 14px Inter}.mp-list{display:grid;gap:6px;overflow:auto}.mp-player{display:grid;grid-template-columns:1fr auto;gap:5px;padding:9px;background:#141414;border:1px solid #202020}.mp-player b{font:800 10px Inter}.mp-player small{font:700 7px Inter;color:#777}.mp-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.mp-close{position:absolute;top:16px;right:16px;background:none;border:0;color:#fff;font-size:22px}.mp-help{font:700 8px/1.5 Inter;color:#666;margin-top:8px}
 @media(max-width:720px) and (orientation:landscape){.mp-panel{width:96vw;height:92vh;grid-template-columns:220px 1fr}.mp-side{padding:12px}.mp-main{padding:12px}.mp-side h2{font-size:27px}.mp-code{font-size:21px}}
 
-  </style>
+  
+/* Landscape-first multiplayer refinements */
+.mp-section-title{font:800 10px/1 Inter;letter-spacing:2px;color:#ff4655;margin:12px 0 5px}.mp-room-row{display:grid;grid-template-columns:1fr 82px;gap:6px;align-items:stretch}.mp-room-row input{min-width:0}.mp-room-row .mp-code{margin:0;min-height:38px}.mp-code{display:flex;align-items:center;justify-content:center;cursor:pointer}.mp-name-note{font:700 7px/1.4 Inter;color:#777;margin-top:5px}#mp-name-required{position:absolute;inset:0;z-index:100;background:rgba(5,5,5,.98);display:none;align-items:center;justify-content:center;padding:18px}#mp-name-required.open{display:flex}.mp-name-card{width:min(340px,90vw);background:#0c0c0c;border:1px solid #292929;padding:18px;box-shadow:0 20px 70px #000}.mp-name-card h3{margin:0 0 6px;font:800 25px 'Barlow Condensed'}.mp-name-card p{margin:0 0 12px;font:700 8px/1.5 Inter;color:#888}.mp-name-card input{width:100%;padding:11px;background:#050505;color:#fff;border:1px solid #333;outline:none;font:700 10px Inter;text-transform:uppercase}.mp-name-card button{width:100%;margin-top:9px}.mp-lock{font:700 7px Inter;color:#ff4655;margin-top:7px}@media(orientation:portrait){#multiplayer.open:after{content:'ROTATE TO LANDSCAPE';position:absolute;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#050505;color:#fff;font:800 15px Inter;letter-spacing:2px}}@media(max-width:720px) and (orientation:landscape){.mp-panel{width:98vw;height:94vh;grid-template-columns:210px 1fr}.mp-side{padding:10px}.mp-main{padding:10px}.mp-side h2{font-size:25px}.mp-form{gap:6px;margin-top:7px}.mp-form input,.mp-form select{padding:8px;font-size:9px}.mp-code{font-size:17px;min-height:34px}.mp-team{padding:8px}.mp-player{padding:7px}.mp-foot{margin-top:8px}.mp-btn{padding:9px}}
+</style>
 </head>
 <body class="greek-loading">
   <div id="greekSplash" aria-label="GREEK logo animation">
@@ -650,22 +653,36 @@ body::before{
 
 
   <div id="multiplayer" aria-hidden="true">
+    <div id="mp-name-required">
+      <div class="mp-name-card">
+        <div class="kicker">GREEK // PLAYER SETUP</div>
+        <h3>ADD YOUR NAME</h3>
+        <p>A player name is required before multiplayer. Save it here and continue.</p>
+        <input id="mp-required-name" maxlength="16" placeholder="PLAYER NAME" autocomplete="off">
+        <button class="mp-btn primary" id="mp-save-required-name">SAVE & CONTINUE</button>
+        <div class="mp-lock">NAME REQUIRED • LANDSCAPE MULTIPLAYER</div>
+      </div>
+    </div>
     <div class="mp-panel">
       <aside class="mp-side">
         <div class="kicker">GREEK // LIVE NETWORK</div><h2>MULTIPLAYER</h2>
-        <p>MINIMUM 1v1. HOST CONTROLS THE ROOM. MATCHES SUPPORT 1v1, 2v1 AND 2v2.</p>
+        <p>LANDSCAPE MODE • MINIMUM 1v1 • HOST CONTROLS THE ROOM • 1v1 / 2v1 / 2v2.</p>
+        <div class="mp-section-title">NEW ROOM</div>
         <div class="mp-form">
           <input id="mp-room-name" maxlength="20" placeholder="ROOM NAME">
           <input id="mp-room-pass" maxlength="20" type="password" placeholder="PASSWORD (OPTIONAL)">
           <select id="mp-mode"><option value="1v1">1v1</option><option value="2v1">2v1</option><option value="2v2">2v2</option></select>
           <select id="mp-map"><option value="ATLAS RANGE">ATLAS RANGE</option><option value="NEO RIFT">NEO RIFT</option></select>
           <button class="mp-btn primary" id="mp-create">CREATE ROOM</button>
-          <input id="mp-join-code" inputmode="numeric" maxlength="5" placeholder="5-DIGIT ROOM ID">
-          <input id="mp-join-pass" maxlength="20" type="password" placeholder="ROOM PASSWORD">
+        </div>
+        <div class="mp-section-title">JOIN ROOM</div>
+        <div class="mp-form">
+          <div class="mp-room-row"><input id="mp-join-code" inputmode="numeric" maxlength="5" placeholder="ROOM ID"><div class="mp-code" id="mp-code">-----</div></div>
+          <input id="mp-join-pass" maxlength="20" type="password" placeholder="ROOM PASSWORD (IF ANY)">
           <button class="mp-btn" id="mp-join">JOIN ROOM</button>
         </div>
-        <div class="mp-code" id="mp-code">-----</div>
-        <div class="mp-help">Tap the room ID to copy it. The host can change map and team size before deployment.</div>
+        <div class="mp-name-note">Saved player name is used when you create or join.</div>
+        <div class="mp-help">Tap the generated room ID to copy it. Host controls map and team size.</div>
       </aside>
       <section class="mp-main">
         <div class="mp-head"><div><div class="kicker">ROOM CONTROL</div><h3 id="mp-room-title">NO ROOM</h3></div><div class="mp-status" id="mp-status">OFFLINE</div></div>
@@ -1663,8 +1680,10 @@ body::before{
     if(firebase.auth().currentUser){mpUser=firebase.auth().currentUser;return true;}
     const cred=await firebase.auth().signInAnonymously();mpUser=cred.user;return true;
   }
-  function open(){modal.classList.add('open');modal.setAttribute('aria-hidden','false');$('mp-status').textContent='CONNECTING';ensureAuth().then(()=>{$('mp-status').textContent='FIREBASE READY'}).catch(e=>{$('mp-status').textContent='AUTH ERROR: '+(e?.code||e?.message||'UNKNOWN');console.error('GREEK multiplayer auth error',e);});}
+  function open(){modal.classList.add('open');modal.setAttribute('aria-hidden','false');const saved=(localStorage.getItem('greekPlayerName')||'').trim();$('mp-required-name').value=saved;$('mp-name-required').classList.toggle('open',!saved);if(saved){$('mp-status').textContent='CONNECTING';ensureAuth().then(()=>{$('mp-status').textContent='FIREBASE READY'}).catch(e=>{$('mp-status').textContent='AUTH ERROR: '+(e?.code||e?.message||'UNKNOWN');console.error('GREEK multiplayer auth error',e);});}else setTimeout(()=>$('mp-required-name')?.focus(),60);}
   $('open-multiplayer')?.addEventListener('click',open);
+  $('mp-save-required-name').addEventListener('click',()=>{const n=$('mp-required-name').value.trim();if(n.length<2){$('mp-required-name').focus();return;}localStorage.setItem('greekPlayerName',n);$('mp-name-required').classList.remove('open');$('mp-status').textContent='CONNECTING';ensureAuth().then(()=>{$('mp-status').textContent='FIREBASE READY'}).catch(e=>{$('mp-status').textContent='AUTH ERROR: '+(e?.code||e?.message||'UNKNOWN');});});
+  $('mp-required-name').addEventListener('keydown',e=>{if(e.key==='Enter')$('mp-save-required-name').click();});
   $('mp-code').addEventListener('click',()=>{if(mpRoomId)navigator.clipboard?.writeText(mpRoomId);});
   function renderRoom(data){
     mpData=data||{}; const players=Object.values(mpData.players||{});

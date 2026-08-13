@@ -7,6 +7,10 @@
   <title>GREEK - Tactical FPS</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+  <!-- Firebase Compat SDK: required by the multiplayer room system -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700&family=Inter:wght@500;600;700&display=swap');
 
@@ -1643,6 +1647,68 @@ body::before{
       init();
     })();
   </script>
-\n<script>\n(function(){\n  const firebaseConfig={apiKey:"AIzaSyCRk06OINjVyIPPIEp2Zh9wYku6gpBz1cI",authDomain:"game-gane-9132a.firebaseapp.com",databaseURL:"https://game-gane-9132a-default-rtdb.firebaseio.com",projectId:"game-gane-9132a",storageBucket:"game-gane-9132a.firebasestorage.app",messagingSenderId:"491402378341",appId:"1:491402378341:web:8c4dbf7b506093b12a9a8c",measurementId:"G-8WNQNFK63S"};\n  let mpUser=null,mpDb=null,mpRoomId=null,mpRoomRef=null,mpPlayerRef=null,mpData=null,mpSyncTimer=null,remotePlayers={};\n  const $=id=>document.getElementById(id);\n  const modal=$('multiplayer');\n  function esc(v){return String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));}\n  function teamLimit(mode,team){if(mode==='1v1')return 1;if(mode==='2v1')return team==='blue'?2:1;return 2;}\n  function makeId(){return String(Math.floor(10000+Math.random()*90000));}\n  async function ensureAuth(){\n    if(!window.firebase)return false;\n    if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);\n    mpDb=firebase.database();\n    if(firebase.auth().currentUser){mpUser=firebase.auth().currentUser;return true;}\n    const cred=await firebase.auth().signInAnonymously();mpUser=cred.user;return true;\n  }\n  function open(){modal.classList.add('open');modal.setAttribute('aria-hidden','false');$('mp-status').textContent='CONNECTING';ensureAuth().then(()=>{$('mp-status').textContent='READY'}).catch(e=>{$('mp-status').textContent='FIREBASE ERROR'});}\n  $('open-multiplayer')?.addEventListener('click',open);\n  $('mp-code').addEventListener('click',()=>{if(mpRoomId)navigator.clipboard?.writeText(mpRoomId);});\n  function renderRoom(data){\n    mpData=data||{}; const players=Object.values(mpData.players||{});\n    $('mp-room-title').textContent=mpData.name||'ROOM';$('mp-code').textContent=mpRoomId||'-----';$('mp-status').textContent=`${players.length}/${(teamLimit(mpData.mode,'blue')+teamLimit(mpData.mode,'red'))} PLAYERS • ${mpData.map||'ATLAS RANGE'}`;\n    const blue=players.filter(p=>p.team==='blue'),red=players.filter(p=>p.team==='red');$('mp-blue-count').textContent=blue.length;$('mp-red-count').textContent=red.length;\n    $('mp-blue-list').innerHTML=blue.map(p=>`<div class="mp-player"><b>${esc(p.name)}${p.admin?' • HOST':''}</b><small>${p.ready?'READY':'NOT READY'}</small></div>`).join('')||'<div class="mp-player"><small>EMPTY SLOT</small></div>';\n    $('mp-red-list').innerHTML=red.map(p=>`<div class="mp-player"><b>${esc(p.name)}${p.admin?' • HOST':''}</b><small>${p.ready?'READY':'NOT READY'}</small></div>`).join('')||'<div class="mp-player"><small>EMPTY SLOT</small></div>';\n  }\n  async function createRoom(){\n    try{await ensureAuth(); const id=makeId(),mode=$('mp-mode').value,name=$('mp-room-name').value.trim()||'GREEK ROOM',pass=$('mp-room-pass').value,map=$('mp-map').value;\n      mpRoomId=id;mpRoomRef=mpDb.ref('greekRooms/'+id);\n      const hostName=localStorage.getItem('greekPlayerName')||'PLAYER';\n      const data={name,mode,map,password:pass?btoa(unescape(encodeURIComponent(pass))):'',host:mpUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP,players:{[mpUser.uid]:{name:hostName,team:'blue',admin:true,ready:true,health:200,alive:true,x:0,y:1.7,z:24,yaw:0,pitch:0,weapon:'vandal'}}};\n      await mpRoomRef.set(data);attachRoom();\n    }catch(e){$('mp-status').textContent='CREATE FAILED';console.error(e);}\n  }\n  async function joinRoom(){\n    try{await ensureAuth();const id=$('mp-join-code').value.trim();if(!/^\\d{5}$/.test(id)){ $('mp-status').textContent='5-DIGIT ID REQUIRED';return;}\n      const ref=mpDb.ref('greekRooms/'+id),snap=await ref.get();if(!snap.exists()){ $('mp-status').textContent='ROOM NOT FOUND';return;}\n      const d=snap.val(),pass=$('mp-join-pass').value;if(d.password&&d.password!==btoa(unescape(encodeURIComponent(pass)))){$('mp-status').textContent='WRONG PASSWORD';return;}\n      const players=Object.values(d.players||{});const blue=players.filter(p=>p.team==='blue').length,red=players.filter(p=>p.team==='red').length;\n      const mode=d.mode||'1v1';let team=blue<teamLimit(mode,'blue')?'blue':red<teamLimit(mode,'red')?'red':null;if(!team){$('mp-status').textContent='ROOM FULL';return;}\n      mpRoomId=id;mpRoomRef=ref;const n=localStorage.getItem('greekPlayerName')||'PLAYER';mpPlayerRef=ref.child('players/'+mpUser.uid);await mpPlayerRef.set({name:n,team,admin:false,ready:false,health:200,alive:true,x:0,y:1.7,z:24,yaw:0,pitch:0,weapon:'vandal',joinedAt:firebase.database.ServerValue.TIMESTAMP});attachRoom();\n    }catch(e){$('mp-status').textContent='JOIN FAILED';console.error(e);}\n  }\n  function attachRoom(){\n    if(mpPlayerRef){} else mpPlayerRef=mpRoomRef.child('players/'+mpUser.uid);\n    mpRoomRef.on('value',s=>{if(!s.exists()){leaveRoom(false);return;}mpData=s.val();renderRoom(mpData);if(mpData.state==='live'&&!started){const b=$('start');if(b)b.click();}});\n    mpPlayerRef.onDisconnect().remove();\n    $('mp-deploy').textContent=(mpData?.host===mpUser?.uid)?'DEPLOY':'READY';\n    startSync();\n  }\n  function switchTeam(team){if(!mpRoomRef||!mpData)return;const players=Object.values(mpData.players||{});if(players.filter(p=>p.team===team).length>=teamLimit(mpData.mode||'1v1',team)){ $('mp-status').textContent='TEAM FULL';return;}mpPlayerRef.update({team,ready:false});}\n  function ready(){if(!mpPlayerRef)return;mpPlayerRef.update({ready:true});if(mpData?.host===mpUser.uid)deploy();}\n  async function deploy(){if(!mpRoomRef||!mpData)return;const players=Object.values(mpData.players||{});const need=(mpData.mode==='1v1'?2:mpData.mode==='2v1'?3:4);if(players.length<need){$('mp-status').textContent=`NEED ${need} PLAYERS`;return;}if(mpData.host!==mpUser.uid){ready();return;}await mpRoomRef.update({state:'live',startedAt:firebase.database.ServerValue.TIMESTAMP});modal.classList.remove('open');const startBtn=$('start');startBtn?.click();}\n  function startSync(){clearInterval(mpSyncTimer);mpSyncTimer=setInterval(()=>{if(!mpPlayerRef||!started)return;const p={x:window.__greekX||0,y:window.__greekY||1.7,z:window.__greekZ||24,yaw:window.__greekYaw||0,pitch:window.__greekPitch||0,health:window.__greekHealth||200,alive:window.__greekAlive!==false,weapon:window.__greekWeapon||'vandal',team:mpData?.players?.[mpUser.uid]?.team||'blue',name:localStorage.getItem('greekPlayerName')||'PLAYER'};mpPlayerRef.update(p).catch(()=>{});},100);}\n  function leaveRoom(close=true){clearInterval(mpSyncTimer);if(mpRoomRef&&mpPlayerRef)mpPlayerRef.remove().catch(()=>{});if(mpRoomRef)mpRoomRef.off();mpRoomRef=null;mpPlayerRef=null;mpRoomId=null;mpData=null;Object.values(remotePlayers).forEach(o=>scene?.remove(o));remotePlayers={};if(close)modal.classList.remove('open');}\n  $('mp-create').addEventListener('click',createRoom);$('mp-join').addEventListener('click',joinRoom);$('mp-team-blue').addEventListener('click',()=>switchTeam('blue'));$('mp-team-red').addEventListener('click',()=>switchTeam('red'));$('mp-deploy').addEventListener('click',deploy);$('mp-leave').addEventListener('click',()=>leaveRoom(true));\n  window.__greekMultiplayer={open,leaveRoom,deploy};\n  // Expose current state from the existing game without changing its gameplay engine.\n  const oldAnim=window.requestAnimationFrame;\n  setInterval(()=>{try{window.__greekYaw=window.__greekYaw||0;window.__greekPitch=window.__greekPitch||0;window.__greekHealth=window.__greekHealth||200;}catch(e){}},500);\n})();\n</script>\n
+<script>
+(function(){
+  const firebaseConfig={apiKey:"AIzaSyCRk06OINjVyIPPIEp2Zh9wYku6gpBz1cI",authDomain:"game-gane-9132a.firebaseapp.com",databaseURL:"https://game-gane-9132a-default-rtdb.firebaseio.com",projectId:"game-gane-9132a",storageBucket:"game-gane-9132a.firebasestorage.app",messagingSenderId:"491402378341",appId:"1:491402378341:web:8c4dbf7b506093b12a9a8c",measurementId:"G-8WNQNFK63S"};
+  let mpUser=null,mpDb=null,mpRoomId=null,mpRoomRef=null,mpPlayerRef=null,mpData=null,mpSyncTimer=null,remotePlayers={};
+  const $=id=>document.getElementById(id);
+  const modal=$('multiplayer');
+  function esc(v){return String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));}
+  function teamLimit(mode,team){if(mode==='1v1')return 1;if(mode==='2v1')return team==='blue'?2:1;return 2;}
+  function makeId(){return String(Math.floor(10000+Math.random()*90000));}
+  async function ensureAuth(){
+    if(!window.firebase) throw new Error('Firebase SDK not loaded');
+    if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+    mpDb=firebase.database();
+    if(firebase.auth().currentUser){mpUser=firebase.auth().currentUser;return true;}
+    const cred=await firebase.auth().signInAnonymously();mpUser=cred.user;return true;
+  }
+  function open(){modal.classList.add('open');modal.setAttribute('aria-hidden','false');$('mp-status').textContent='CONNECTING';ensureAuth().then(()=>{$('mp-status').textContent='FIREBASE READY'}).catch(e=>{$('mp-status').textContent='AUTH ERROR: '+(e?.code||e?.message||'UNKNOWN');console.error('GREEK multiplayer auth error',e);});}
+  $('open-multiplayer')?.addEventListener('click',open);
+  $('mp-code').addEventListener('click',()=>{if(mpRoomId)navigator.clipboard?.writeText(mpRoomId);});
+  function renderRoom(data){
+    mpData=data||{}; const players=Object.values(mpData.players||{});
+    $('mp-room-title').textContent=mpData.name||'ROOM';$('mp-code').textContent=mpRoomId||'-----';$('mp-status').textContent=`${players.length}/${(teamLimit(mpData.mode,'blue')+teamLimit(mpData.mode,'red'))} PLAYERS • ${mpData.map||'ATLAS RANGE'}`;
+    const blue=players.filter(p=>p.team==='blue'),red=players.filter(p=>p.team==='red');$('mp-blue-count').textContent=blue.length;$('mp-red-count').textContent=red.length;
+    $('mp-blue-list').innerHTML=blue.map(p=>`<div class="mp-player"><b>${esc(p.name)}${p.admin?' • HOST':''}</b><small>${p.ready?'READY':'NOT READY'}</small></div>`).join('')||'<div class="mp-player"><small>EMPTY SLOT</small></div>';
+    $('mp-red-list').innerHTML=red.map(p=>`<div class="mp-player"><b>${esc(p.name)}${p.admin?' • HOST':''}</b><small>${p.ready?'READY':'NOT READY'}</small></div>`).join('')||'<div class="mp-player"><small>EMPTY SLOT</small></div>';
+  }
+  async function createRoom(){
+    try{await ensureAuth(); const id=makeId(),mode=$('mp-mode').value,name=$('mp-room-name').value.trim()||'GREEK ROOM',pass=$('mp-room-pass').value,map=$('mp-map').value;
+      mpRoomId=id;mpRoomRef=mpDb.ref('greekRooms/'+id);
+      const hostName=localStorage.getItem('greekPlayerName')||'PLAYER';
+      const data={name,mode,map,password:pass?btoa(unescape(encodeURIComponent(pass))):'',host:mpUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP,players:{[mpUser.uid]:{name:hostName,team:'blue',admin:true,ready:true,health:200,alive:true,x:0,y:1.7,z:24,yaw:0,pitch:0,weapon:'vandal'}}};
+      await mpRoomRef.set(data);attachRoom();
+    }catch(e){$('mp-status').textContent='CREATE FAILED: '+(e?.code||e?.message||'UNKNOWN');console.error('GREEK create room error',e);}
+  }
+  async function joinRoom(){
+    try{await ensureAuth();const id=$('mp-join-code').value.trim();if(!/^\\d{5}$/.test(id)){ $('mp-status').textContent='5-DIGIT ID REQUIRED';return;}
+      const ref=mpDb.ref('greekRooms/'+id),snap=await ref.get();if(!snap.exists()){ $('mp-status').textContent='ROOM NOT FOUND';return;}
+      const d=snap.val(),pass=$('mp-join-pass').value;if(d.password&&d.password!==btoa(unescape(encodeURIComponent(pass)))){$('mp-status').textContent='WRONG PASSWORD';return;}
+      const players=Object.values(d.players||{});const blue=players.filter(p=>p.team==='blue').length,red=players.filter(p=>p.team==='red').length;
+      const mode=d.mode||'1v1';let team=blue<teamLimit(mode,'blue')?'blue':red<teamLimit(mode,'red')?'red':null;if(!team){$('mp-status').textContent='ROOM FULL';return;}
+      mpRoomId=id;mpRoomRef=ref;const n=localStorage.getItem('greekPlayerName')||'PLAYER';mpPlayerRef=ref.child('players/'+mpUser.uid);await mpPlayerRef.set({name:n,team,admin:false,ready:false,health:200,alive:true,x:0,y:1.7,z:24,yaw:0,pitch:0,weapon:'vandal',joinedAt:firebase.database.ServerValue.TIMESTAMP});attachRoom();
+    }catch(e){$('mp-status').textContent='JOIN FAILED: '+(e?.code||e?.message||'UNKNOWN');console.error('GREEK join room error',e);}
+  }
+  function attachRoom(){
+    if(mpPlayerRef){} else mpPlayerRef=mpRoomRef.child('players/'+mpUser.uid);
+    mpRoomRef.on('value',s=>{if(!s.exists()){leaveRoom(false);return;}mpData=s.val();renderRoom(mpData);if(mpData.state==='live'&&!started){const b=$('start');if(b)b.click();}});
+    mpPlayerRef.onDisconnect().remove();
+    $('mp-deploy').textContent=(mpData?.host===mpUser?.uid)?'DEPLOY':'READY';
+    startSync();
+  }
+  function switchTeam(team){if(!mpRoomRef||!mpData)return;const players=Object.values(mpData.players||{});if(players.filter(p=>p.team===team).length>=teamLimit(mpData.mode||'1v1',team)){ $('mp-status').textContent='TEAM FULL';return;}mpPlayerRef.update({team,ready:false});}
+  function ready(){if(!mpPlayerRef)return;mpPlayerRef.update({ready:true});if(mpData?.host===mpUser.uid)deploy();}
+  async function deploy(){if(!mpRoomRef||!mpData)return;const players=Object.values(mpData.players||{});const need=(mpData.mode==='1v1'?2:mpData.mode==='2v1'?3:4);if(players.length<need){$('mp-status').textContent=`NEED ${need} PLAYERS`;return;}if(mpData.host!==mpUser.uid){ready();return;}await mpRoomRef.update({state:'live',startedAt:firebase.database.ServerValue.TIMESTAMP});modal.classList.remove('open');const startBtn=$('start');startBtn?.click();}
+  function startSync(){clearInterval(mpSyncTimer);mpSyncTimer=setInterval(()=>{if(!mpPlayerRef||!started)return;const p={x:window.__greekX||0,y:window.__greekY||1.7,z:window.__greekZ||24,yaw:window.__greekYaw||0,pitch:window.__greekPitch||0,health:window.__greekHealth||200,alive:window.__greekAlive!==false,weapon:window.__greekWeapon||'vandal',team:mpData?.players?.[mpUser.uid]?.team||'blue',name:localStorage.getItem('greekPlayerName')||'PLAYER'};mpPlayerRef.update(p).catch(()=>{});},100);}
+  function leaveRoom(close=true){clearInterval(mpSyncTimer);if(mpRoomRef&&mpPlayerRef)mpPlayerRef.remove().catch(()=>{});if(mpRoomRef)mpRoomRef.off();mpRoomRef=null;mpPlayerRef=null;mpRoomId=null;mpData=null;Object.values(remotePlayers).forEach(o=>scene?.remove(o));remotePlayers={};if(close)modal.classList.remove('open');}
+  $('mp-create').addEventListener('click',createRoom);$('mp-join').addEventListener('click',joinRoom);$('mp-team-blue').addEventListener('click',()=>switchTeam('blue'));$('mp-team-red').addEventListener('click',()=>switchTeam('red'));$('mp-deploy').addEventListener('click',deploy);$('mp-leave').addEventListener('click',()=>leaveRoom(true));
+  window.__greekMultiplayer={open,leaveRoom,deploy};
+  // Expose current state from the existing game without changing its gameplay engine.
+  const oldAnim=window.requestAnimationFrame;
+  setInterval(()=>{try{window.__greekYaw=window.__greekYaw||0;window.__greekPitch=window.__greekPitch||0;window.__greekHealth=window.__greekHealth||200;}catch(e){}},500);
+})();
+</script>
+
 </body>
 </html>

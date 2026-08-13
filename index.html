@@ -604,7 +604,7 @@ body::before{
                 <p>Enter a room code created by another player.</p>
                 <input id="mp-name-join" class="mp-input" maxlength="16" placeholder="PLAYER NAME">
                 <input id="mp-room-input" class="mp-input" maxlength="6" style="margin-top:7px" placeholder="ROOM CODE">
-                <div class="mp-actions"><button class="mp-btn primary" id="mp-join">JOIN ROOM</button></div>
+                <div class="mp-actions"><button class="mp-btn primary" id="mp-join">JOIN ROOM</button><button class="mp-btn" id="mp-leave">LEAVE ROOM</button></div>
               </div>
             </div>
             <div id="mp-status">MULTIPLAYER OFFLINE — choose CREATE ROOM or JOIN ROOM.</div>
@@ -680,6 +680,7 @@ function mpStatus(t,k=""){const e=document.getElementById("mp-status");if(e){e.t
 function mpName(v){return (v||"AGENT").trim().replace(/[^\w\- ]/g,"").slice(0,16)||"AGENT";}
 function mpCode(){return Array.from({length:6},()=>Math.random().toString(36)[2]).join("").toUpperCase();}
 async function mpInit(){
+  if(!window.riftGameConfig) throw Error('Game configuration is not initialized. Please reload the page.');
   if(!riftFirebaseApp)riftFirebaseApp=firebase.initializeApp(RIFT_FIREBASE_CONFIG);
   riftAuth=firebase.auth();riftDB=firebase.database();
   if(!riftAuth.currentUser)await riftAuth.signInAnonymously();
@@ -704,15 +705,15 @@ async function mpEnterRoom(room,name,isHost){
   riftRoomId=room;riftIsHost=isHost;
   const base=riftDB.ref("rooms/"+room);
   riftPlayerRef=base.child("players/"+riftUser.uid);riftPlayersRef=base.child("players");riftMatchRef=base.child("match");riftEventsRef=base.child("events");
-  if(isHost)await base.child("meta").set({host:riftUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP,maxPlayers:8,status:"lobby",mode:config.mode,map:config.map});
+  if(isHost)await base.child("meta").set({host:riftUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP,maxPlayers:8,status:"lobby",mode:window.riftGameConfig.mode,map:window.riftGameConfig.map});
   const ps=(await base.child("players").once("value")).val()||{};
   const red=Object.values(ps).filter(p=>p.team==="red").length,blue=Object.values(ps).filter(p=>p.team==="blue").length;
   const team=red<=blue?"red":"blue";
-  await riftPlayerRef.set({uid:riftUser.uid,name,team,ready:false,x:0,y:1.7,z:24,yaw:0,pitch:0,health:200,alive:true,weapon:config.weapon,updatedAt:firebase.database.ServerValue.TIMESTAMP});
+  await riftPlayerRef.set({uid:riftUser.uid,name,team,ready:false,x:0,y:1.7,z:24,yaw:0,pitch:0,health:200,alive:true,weapon:window.riftGameConfig.weapon,updatedAt:firebase.database.ServerValue.TIMESTAMP});
   riftPlayerRef.onDisconnect().remove();riftOnline=true;
   document.getElementById("mp-room-code").textContent=room;document.getElementById("mp-hud-code").textContent=room;document.getElementById("mp-hud").style.display="block";
   mpStatus((isHost?"ROOM CREATED":"JOINED ROOM")+" — CODE "+room,"ok");
-  riftPlayersRef.on("value",mpPlayersSnapshot);riftMatchRef.on("value",s=>{const m=s.val()||{};if(m.map)config.map=m.map;});
+  riftPlayersRef.on("value",mpPlayersSnapshot);riftMatchRef.on("value",s=>{const m=s.val()||{};if(m.map)window.riftGameConfig.map=m.map;});
   riftEventsRef.limitToLast(30).on("child_added",s=>{const e=s.val();if(e&&e.uid!==riftUser.uid&&e.type==="shot"&&typeof tracer==="function"){const a=new THREE.Vector3(e.x,e.y,e.z),d=new THREE.Vector3(e.dx,e.dy,e.dz);tracer(a.clone().addScaledVector(d,.5),a.clone().addScaledVector(d,28),0xff4655);}});
   clearInterval(riftSyncTimer);riftSyncTimer=setInterval(mpPublishState,100);
   clearInterval(riftHeartbeatTimer);riftHeartbeatTimer=setInterval(()=>riftPlayerRef?.child("updatedAt").set(firebase.database.ServerValue.TIMESTAMP),3000);
@@ -738,14 +739,14 @@ function mpRemoveRemote(id){const r=riftRemotePlayers.get(id);if(!r)return;scene
 function mpAnimateRemotes(dt){riftRemotePlayers.forEach(r=>{r.group.position.lerp(r.target,Math.min(1,dt*14));r.group.rotation.y=THREE.MathUtils.damp(r.group.rotation.y,r.yaw,14,dt);});}
 function mpPublishState(){
   if(!riftOnline||!riftPlayerRef||typeof camera==="undefined")return;
-  riftPlayerRef.update({x:+camera.position.x.toFixed(3),y:+camera.position.y.toFixed(3),z:+camera.position.z.toFixed(3),yaw:+yaw.toFixed(4),pitch:+pitch.toFixed(4),health:Math.ceil(health),alive:!!playerAlive,weapon:config.weapon,updatedAt:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{});
+  riftPlayerRef.update({x:+camera.position.x.toFixed(3),y:+camera.position.y.toFixed(3),z:+camera.position.z.toFixed(3),yaw:+yaw.toFixed(4),pitch:+pitch.toFixed(4),health:Math.ceil(health),alive:!!playerAlive,weapon:window.riftGameConfig.weapon,updatedAt:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{});
 }
 function mpPublishShot(){
   if(!riftOnline||!riftEventsRef||typeof camera==="undefined")return;
   const d=new THREE.Vector3();camera.getWorldDirection(d);
-  riftEventsRef.push({type:"shot",uid:riftUser.uid,x:camera.position.x,y:camera.position.y,z:camera.position.z,dx:d.x,dy:d.y,dz:d.z,weapon:config.weapon,t:firebase.database.ServerValue.TIMESTAMP});
+  riftEventsRef.push({type:"shot",uid:riftUser.uid,x:camera.position.x,y:camera.position.y,z:camera.position.z,dx:d.x,dy:d.y,dz:d.z,weapon:window.riftGameConfig.weapon,t:firebase.database.ServerValue.TIMESTAMP});
 }
-async function mpStartMatch(){if(riftOnline&&riftIsHost&&riftMatchRef)await riftMatchRef.set({status:"live",startedAt:firebase.database.ServerValue.TIMESTAMP,mode:config.mode,map:config.map,round:1});}
+async function mpStartMatch(){if(riftOnline&&riftIsHost&&riftMatchRef)await riftMatchRef.set({status:"live",startedAt:firebase.database.ServerValue.TIMESTAMP,mode:window.riftGameConfig.mode,map:window.riftGameConfig.map,round:1});}
 async function mpLeaveRoom(clear=true){
   try{if(riftPlayersRef)riftPlayersRef.off();if(riftMatchRef)riftMatchRef.off();if(riftEventsRef)riftEventsRef.off();if(riftPlayerRef)await riftPlayerRef.remove();}catch(e){}
   clearInterval(riftSyncTimer);clearInterval(riftHeartbeatTimer);[...riftRemotePlayers.keys()].forEach(mpRemoveRemote);
@@ -755,6 +756,8 @@ async function mpLeaveRoom(clear=true){
 document.getElementById("mp-create")?.addEventListener("click",async()=>{const b=document.getElementById("mp-create");b.disabled=true;try{await mpCreateRoom();}catch(e){console.error(e);mpStatus("CREATE ROOM FAILED: "+e.message,"err");}b.disabled=false;});
 document.getElementById("mp-join")?.addEventListener("click",async()=>{const b=document.getElementById("mp-join");b.disabled=true;try{await mpJoinRoom();}catch(e){console.error(e);mpStatus("JOIN ROOM FAILED: "+e.message,"err");}b.disabled=false;});
 document.getElementById("mp-room-input")?.addEventListener("input",e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""));
+document.getElementById("mp-leave")?.addEventListener("click",async()=>{await mpLeaveRoom(true);});
+
 
     (() => {
       'use strict';
@@ -791,7 +794,9 @@ document.getElementById("mp-room-input")?.addEventListener("input",e=>e.target.v
       const keys = {}, bots = [], colliders = [], solidMeshes = [], effects = [], smokes = [];
       const velocity = new THREE.Vector3();
       const moveInput = { x: 0, y: 0 };
-      const config = { mode:'range', map:'atlas', weapon:'vandal', volume:.7, ambience:.025, sensitivity:1, quality:'high', touch:true };
+      const config = { mode:'range', map:'atlas', weapon:'vandal', volume:.7, ambience:.025, sensitivity:1, quality:'high', touch:true }
+      window.riftGameConfig = config;
+;
       const WEAPONS = {
         vandal:{name:'VANDAL//X',damage:38,head:100,rate:115,recoil:.024,ammo:25,reload:1400,shake:.012,tone:85},
         phantom:{name:'PHANTOM//S',damage:32,head:88,rate:91,recoil:.014,ammo:30,reload:1250,shake:.008,tone:105},

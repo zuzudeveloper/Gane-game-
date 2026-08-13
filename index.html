@@ -1729,5 +1729,97 @@ body::before{
 })();
 </script>
 
+
+<style id="greek-mp-v3-style">
+/* GREEK Multiplayer V3 — landscape-designed, not landscape-locked */
+#multiplayer .mp-v3{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:clamp(12px,2vw,28px);box-sizing:border-box;background:rgba(0,0,0,.88);z-index:20}
+#multiplayer .mp-v3-page{width:min(1180px,96vw);height:min(700px,92vh);min-height:420px;background:#080808;border:1px solid #2b2b2b;box-shadow:0 24px 80px rgba(0,0,0,.6);display:none;overflow:hidden}
+#multiplayer .mp-v3-page.active{display:flex}
+#multiplayer .mp-v3-head{height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid #252525;background:#0b0b0b}
+#multiplayer .mp-v3-title{font-size:18px;letter-spacing:.16em;font-weight:900;color:#fff}
+#multiplayer .mp-v3-sub{font-size:10px;letter-spacing:.1em;color:#8e8e8e;margin-top:4px}
+#multiplayer .mp-v3-body{flex:1;min-height:0;padding:22px;box-sizing:border-box;overflow:auto}
+#multiplayer .mp-v3-menu{display:grid;grid-template-columns:1fr 1fr;gap:18px;height:100%;align-items:center}
+#multiplayer .mp-v3-card{background:#0e0e0e;border:1px solid #292929;padding:28px;min-height:230px;display:flex;flex-direction:column;justify-content:center}
+#multiplayer .mp-v3-card h2{margin:0 0 8px;font-size:22px;color:#fff;letter-spacing:.08em}
+#multiplayer .mp-v3-card p{color:#888;font-size:12px;line-height:1.5;margin:0 0 22px}
+#multiplayer .mp-v3-btn{border:1px solid #3a3a3a;background:#151515;color:#fff;padding:13px 16px;font-weight:900;letter-spacing:.08em;font-size:11px;cursor:pointer}
+#multiplayer .mp-v3-btn.primary{background:#e51e2a;border-color:#e51e2a}
+#multiplayer .mp-v3-btn:active{transform:scale(.985)}
+#multiplayer .mp-v3-form{max-width:700px;margin:0 auto}
+#multiplayer .mp-v3-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#multiplayer .mp-v3-field{display:flex;flex-direction:column;gap:6px}
+#multiplayer .mp-v3-field.full{grid-column:1/-1}
+#multiplayer .mp-v3-field label{font-size:9px;letter-spacing:.12em;color:#777}
+#multiplayer .mp-v3-input,#multiplayer .mp-v3-select{width:100%;box-sizing:border-box;background:#111;border:1px solid #303030;color:#fff;padding:12px;font-size:12px;outline:none}
+#multiplayer .mp-v3-input:focus,#multiplayer .mp-v3-select:focus{border-color:#e51e2a}
+#multiplayer .mp-v3-actions{display:flex;gap:10px;margin-top:18px}
+#multiplayer .mp-v3-note{margin-top:14px;color:#666;font-size:10px;line-height:1.5}
+#multiplayer .mp-v3-room{display:flex;flex-direction:column;min-height:0}
+#multiplayer .mp-v3-roomcode{font-size:28px;font-weight:1000;letter-spacing:.18em;color:#fff;cursor:pointer}
+#multiplayer .mp-v3-codehint{font-size:9px;color:#777;margin-top:3px}
+#multiplayer .mp-v3-roombody{flex:1;min-height:0;display:grid;grid-template-columns:1.05fr 1fr;gap:16px;padding:16px;box-sizing:border-box}
+#multiplayer .mp-v3-panel{background:#0e0e0e;border:1px solid #292929;padding:16px;min-height:0}
+#multiplayer .mp-v3-panel h3{margin:0 0 12px;font-size:12px;letter-spacing:.12em;color:#fff}
+#multiplayer .mp-v3-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+#multiplayer .mp-v3-meta div{background:#111;border:1px solid #242424;padding:10px}.mp-v3-meta b{display:block;font-size:12px;color:#fff}.mp-v3-meta span{font-size:8px;color:#666;letter-spacing:.08em}
+#multiplayer .mp-v3-teams{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#multiplayer .mp-v3-team{border:1px solid #333;background:#0b0b0b;min-height:190px;padding:12px}.mp-v3-team.blue{border-top:2px solid #4d8dff}.mp-v3-team.red{border-top:2px solid #e51e2a}
+#multiplayer .mp-v3-team h4{font-size:10px;letter-spacing:.1em;margin:0 0 10px;color:#fff}
+#multiplayer .mp-v3-player{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #202020;font-size:10px;color:#ddd}.mp-v3-player small{color:#777;font-size:8px}
+#multiplayer .mp-v3-roomfoot{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #252525;background:#0b0b0b}
+#multiplayer .mp-v3-back{margin-right:auto}
+#multiplayer .mp-v3-countdown{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.86);z-index:50}.mp-v3-countdown.show{display:flex}
+#multiplayer .mp-v3-count{font-size:min(24vw,180px);font-weight:1000;color:#fff;text-shadow:0 0 35px rgba(229,30,42,.55);animation:mpPulse .85s ease both}
+#multiplayer .mp-v3-countlabel{position:absolute;margin-top:220px;font-size:10px;letter-spacing:.2em;color:#aaa}
+@keyframes mpPulse{0%{transform:scale(1.35);opacity:0}35%{transform:scale(1);opacity:1}100%{transform:scale(.94);opacity:.96}}
+@media(max-width:700px){#multiplayer .mp-v3-page{width:96vw;height:94vh;min-height:0}.mp-v3-menu{grid-template-columns:1fr!important}.mp-v3-card{min-height:170px;padding:20px}.mp-v3-grid,.mp-v3-roombody,.mp-v3-teams{grid-template-columns:1fr}.mp-v3-roombody{overflow:auto}.mp-v3-meta{grid-template-columns:1fr 1fr}.mp-v3-roomfoot{flex-wrap:wrap}.mp-v3-btn{padding:11px 12px}}
+@media(orientation:portrait){#multiplayer .mp-v3-page{height:94vh}.mp-v3-menu{grid-template-columns:1fr}.mp-v3-card{min-height:130px}.mp-v3-roombody{grid-template-columns:1fr}}
+</style>
+<script id="greek-mp-v3-script">
+(function(){
+  const root=document.getElementById('multiplayer'); if(!root)return;
+  const firebaseConfig={apiKey:"AIzaSyCRk06OINjVyIPPIEp2Zh9wYKu6gpBz1cI",authDomain:"game-gane-9132a.firebaseapp.com",databaseURL:"https://game-gane-9132a-default-rtdb.firebaseio.com",projectId:"game-gane-9132a",storageBucket:"game-gane-9132a.firebasestorage.app",messagingSenderId:"491402378341",appId:"1:491402378341:web:8c4dbf7b506093b12a9a8c"};
+  /* Replace the old multiplayer view after its legacy script has loaded. */
+  root.innerHTML=`<div class="mp-v3">
+    <section class="mp-v3-page active" id="mpv-menu"><div style="width:100%;display:flex;flex-direction:column"><div class="mp-v3-head"><div><div class="mp-v3-title">GREEK // MULTIPLAYER</div><div class="mp-v3-sub">CREATE OR JOIN A ROOM</div></div><button class="mp-v3-btn" id="mpv-close">CLOSE</button></div><div class="mp-v3-body"><div class="mp-v3-menu"><div class="mp-v3-card"><h2>CREATE ROOM</h2><p>Create a room first. After creation, a separate <b>ROOM CONTROL</b> page opens for the host and players.</p><button class="mp-v3-btn primary" id="mpv-go-create">CREATE ROOM</button></div><div class="mp-v3-card"><h2>JOIN ROOM</h2><p>Enter the five-digit Room ID and optional password from the host.</p><button class="mp-v3-btn" id="mpv-go-join">JOIN ROOM</button></div></div></div></div></section>
+    <section class="mp-v3-page" id="mpv-create"><div style="width:100%;display:flex;flex-direction:column"><div class="mp-v3-head"><div><div class="mp-v3-title">CREATE ROOM</div><div class="mp-v3-sub">HOST SETUP</div></div><button class="mp-v3-btn" id="mpv-create-back">BACK</button></div><div class="mp-v3-body"><div class="mp-v3-form"><div class="mp-v3-grid">
+      <div class="mp-v3-field full"><label>ROOM NAME</label><input class="mp-v3-input" id="mpv-room-name" maxlength="20" placeholder="ROOM NAME"></div>
+      <div class="mp-v3-field"><label>PASSWORD — OPTIONAL</label><input class="mp-v3-input" id="mpv-room-pass" maxlength="20" type="password" placeholder="OPTIONAL PASSWORD"></div>
+      <div class="mp-v3-field"><label>TEAM FORMAT</label><select class="mp-v3-select" id="mpv-mode"><option value="1v1">1v1</option><option value="2v1">2v1</option><option value="2v2">2v2</option></select></div>
+      <div class="mp-v3-field"><label>MAP</label><select class="mp-v3-select" id="mpv-map"><option value="ATLAS RANGE">ATLAS RANGE</option><option value="NEO RIFT">NEO RIFT</option></select></div>
+    </div><div class="mp-v3-actions"><button class="mp-v3-btn primary" id="mpv-create-submit">CREATE ROOM</button></div><div class="mp-v3-note" id="mpv-create-status">The room creator becomes ADMIN and controls the start.</div></div></div></div></section>
+    <section class="mp-v3-page" id="mpv-join"><div style="width:100%;display:flex;flex-direction:column"><div class="mp-v3-head"><div><div class="mp-v3-title">JOIN ROOM</div><div class="mp-v3-sub">ENTER HOST ROOM DETAILS</div></div><button class="mp-v3-btn" id="mpv-join-back">BACK</button></div><div class="mp-v3-body"><div class="mp-v3-form"><div class="mp-v3-grid"><div class="mp-v3-field full"><label>ROOM ID</label><input class="mp-v3-input" id="mpv-join-id" inputmode="numeric" maxlength="5" placeholder="5-DIGIT ROOM ID"></div><div class="mp-v3-field full"><label>PASSWORD — IF REQUIRED</label><input class="mp-v3-input" id="mpv-join-pass" maxlength="20" type="password" placeholder="OPTIONAL"></div></div><div class="mp-v3-actions"><button class="mp-v3-btn primary" id="mpv-join-submit">JOIN ROOM</button></div><div class="mp-v3-note" id="mpv-join-status">Your saved Player Name will be used automatically.</div></div></div></div></section>
+    <section class="mp-v3-page mp-v3-room" id="mpv-room"><div style="width:100%;display:flex;flex-direction:column;min-height:100%"><div class="mp-v3-head"><div><div class="mp-v3-title">ROOM CONTROL</div><div class="mp-v3-sub" id="mpv-room-title">ROOM</div></div><div style="text-align:right"><div class="mp-v3-roomcode" id="mpv-room-code">-----</div><div class="mp-v3-codehint">ROOM ID • TAP TO COPY</div></div></div><div class="mp-v3-roombody"><div class="mp-v3-panel"><h3>ROOM DETAILS</h3><div class="mp-v3-meta"><div><b id="mpv-meta-map">ATLAS RANGE</b><span>MAP</span></div><div><b id="mpv-meta-mode">1v1</b><span>FORMAT</span></div><div><b id="mpv-meta-host">HOST</b><span>ADMIN</span></div></div><h3>TEAMS</h3><div class="mp-v3-teams"><div class="mp-v3-team blue"><h4>BLUE TEAM <span id="mpv-blue-count">0</span></h4><div id="mpv-blue-list"></div><button class="mp-v3-btn" id="mpv-blue">JOIN BLUE</button></div><div class="mp-v3-team red"><h4>RED TEAM <span id="mpv-red-count">0</span></h4><div id="mpv-red-list"></div><button class="mp-v3-btn" id="mpv-red">JOIN RED</button></div></div></div><div class="mp-v3-panel"><h3>PLAYERS IN ROOM</h3><div id="mpv-all-list"></div><div class="mp-v3-note" id="mpv-room-status">Waiting for players…</div></div></div><div class="mp-v3-roomfoot"><button class="mp-v3-btn mp-v3-back" id="mpv-leave">LEAVE ROOM</button><button class="mp-v3-btn primary" id="mpv-start">START MATCH</button></div></div></section>
+    <div class="mp-v3-countdown" id="mpv-countdown"><div class="mp-v3-count" id="mpv-count">5</div><div class="mp-v3-countlabel">MATCH STARTING</div></div>
+  </div>`;
+
+  const q=id=>document.getElementById(id), pages=['mpv-menu','mpv-create','mpv-join','mpv-room'];
+  const show=id=>pages.forEach(x=>q(x).classList.toggle('active',x===id));
+  let user=null,db=null,roomRef=null,playerRef=null,roomId=null,roomData=null,countdownRunning=false;
+  const name=()=>localStorage.getItem('greekPlayerName')?.trim()||'';
+  const limit=(mode,team)=>mode==='1v1'?1:mode==='2v1'?(team==='blue'?2:1):2;
+  const total=mode=>mode==='1v1'?2:mode==='2v1'?3:4;
+  const encode=s=>btoa(unescape(encodeURIComponent(s||'')));
+  async function auth(){if(!window.firebase)throw Error('Firebase SDK is not loaded');if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);db=firebase.database();if(firebase.auth().currentUser){user=firebase.auth().currentUser;return}user=(await firebase.auth().signInAnonymously()).user}
+  function render(data){roomData=data;const players=Object.entries(data.players||{}).map(([uid,p])=>({...p,uid}));q('mpv-room-title').textContent=data.name||'GREEK ROOM';q('mpv-room-code').textContent=roomId;q('mpv-meta-map').textContent=data.map||'ATLAS RANGE';q('mpv-meta-mode').textContent=data.mode||'1v1';q('mpv-meta-host').textContent=data.host===user?.uid?'YOU':'HOST';
+    const b=players.filter(p=>p.team==='blue'),r=players.filter(p=>p.team==='red');q('mpv-blue-count').textContent=b.length;q('mpv-red-count').textContent=r.length;
+    const item=p=>`<div class="mp-v3-player"><span>${String(p.name||'PLAYER').replace(/[&<>]/g,'')}</span><small>${p.admin?'ADMIN':(p.ready?'READY':'JOINED')}</small></div>`;
+    q('mpv-blue-list').innerHTML=b.map(item).join('')||'<div class="mp-v3-player"><small>EMPTY SLOT</small></div>';q('mpv-red-list').innerHTML=r.map(item).join('')||'<div class="mp-v3-player"><small>EMPTY SLOT</small></div>';q('mpv-all-list').innerHTML=players.map(p=>`<div class="mp-v3-player"><span>${String(p.name||'PLAYER').replace(/[&<>]/g,'')}</span><small>${p.team?.toUpperCase()||'UNASSIGNED'}${p.admin?' • ADMIN':''}</small></div>`).join('')||'<div class="mp-v3-player"><small>NO PLAYERS</small></div>';
+    const needed=total(data.mode||'1v1');q('mpv-room-status').textContent=players.length<needed?`WAITING FOR PLAYERS • ${players.length}/${needed}`:`READY • ${players.length}/${needed}`;q('mpv-start').disabled=!(data.host===user?.uid&&players.length>=needed);q('mpv-start').textContent=data.host===user?.uid?'START MATCH':'WAITING FOR ADMIN';
+    if(data.state==='countdown'&&!countdownRunning)beginGame(false); if(data.state==='live'&&!countdownRunning){const btn=document.getElementById('start'); if(btn)btn.click();}
+  }
+  async function create(){try{if(!name()){q('mpv-create-status').textContent='ADD YOUR PLAYER NAME IN SETTINGS FIRST';return}await auth();const id=String(Math.floor(10000+Math.random()*90000));roomId=id;roomRef=db.ref('greekRooms/'+id);const data={name:q('mpv-room-name').value.trim()||'GREEK ROOM',password:encode(q('mpv-room-pass').value),mode:q('mpv-mode').value,map:q('mpv-map').value,host:user.uid,state:'waiting',createdAt:firebase.database.ServerValue.TIMESTAMP,players:{}};data.players[user.uid]={name:name(),team:'blue',admin:true,ready:true,health:200,alive:true};await roomRef.set(data);playerRef=roomRef.child('players/'+user.uid);attach();show('mpv-room')}catch(e){q('mpv-create-status').textContent='CREATE FAILED: '+(e.code||e.message)}}
+  async function join(){try{if(!name()){q('mpv-join-status').textContent='ADD YOUR PLAYER NAME IN SETTINGS FIRST';return}await auth();const id=q('mpv-join-id').value.trim();if(!/^\d{5}$/.test(id)){q('mpv-join-status').textContent='ENTER A 5-DIGIT ROOM ID';return}const ref=db.ref('greekRooms/'+id),snap=await ref.get();if(!snap.exists()){q('mpv-join-status').textContent='ROOM NOT FOUND';return}const d=snap.val(),pw=q('mpv-join-pass').value;if(d.password&&d.password!==encode(pw)){q('mpv-join-status').textContent='WRONG PASSWORD';return}const players=Object.values(d.players||{});if(players.length>=total(d.mode)){q('mpv-join-status').textContent='ROOM FULL';return}const blue=players.filter(p=>p.team==='blue').length,red=players.filter(p=>p.team==='red').length;const team=blue<limit(d.mode,'blue')?'blue':red<limit(d.mode,'red')?'red':null;if(!team){q('mpv-join-status').textContent='NO TEAM SLOT';return}roomId=id;roomRef=ref;playerRef=ref.child('players/'+user.uid);await playerRef.set({name:name(),team,admin:false,ready:false,health:200,alive:true,joinedAt:firebase.database.ServerValue.TIMESTAMP});attach();show('mpv-room')}catch(e){q('mpv-join-status').textContent='JOIN FAILED: '+(e.code||e.message)}}
+  function attach(){roomRef.on('value',s=>{if(!s.exists()){leave(false);return}render(s.val())});playerRef.onDisconnect().remove()}
+  async function team(t){if(!roomData||!playerRef)return;const players=Object.values(roomData.players||{});if(players.filter(p=>p.team===t).length>=limit(roomData.mode,t)){q('mpv-room-status').textContent='TEAM FULL';return}await playerRef.update({team:t,ready:false})}
+  function leave(close=true){try{playerRef?.remove()}catch(e){}roomRef?.off();roomRef=null;playerRef=null;roomId=null;roomData=null;if(close)show('mpv-menu')}
+  async function start(){if(!roomData||roomData.host!==user?.uid)return;const players=Object.values(roomData.players||{});if(players.length<total(roomData.mode)){q('mpv-room-status').textContent=`NEED ${total(roomData.mode)} PLAYERS`;return}await roomRef.update({state:'countdown',countdownStartedAt:firebase.database.ServerValue.TIMESTAMP});beginGame(true)}
+  function beginGame(initiator){if(countdownRunning)return;countdownRunning=true;show('mpv-room');const ov=q('mpv-countdown');ov.classList.add('show');let n=5;q('mpv-count').textContent=n;const timer=setInterval(()=>{n--;q('mpv-count').textContent=n;if(n<=0){clearInterval(timer);ov.classList.remove('show');countdownRunning=false;if(initiator&&roomRef)roomRef.update({state:'live',startedAt:firebase.database.ServerValue.TIMESTAMP});const btn=document.getElementById('start');if(btn)btn.click();}},1000)}
+  q('mpv-go-create').onclick=()=>show('mpv-create');q('mpv-go-join').onclick=()=>show('mpv-join');q('mpv-create-back').onclick=()=>show('mpv-menu');q('mpv-join-back').onclick=()=>show('mpv-menu');q('mpv-create-submit').onclick=create;q('mpv-join-submit').onclick=join;q('mpv-blue').onclick=()=>team('blue');q('mpv-red').onclick=()=>team('red');q('mpv-start').onclick=start;q('mpv-leave').onclick=()=>leave(true);q('mpv-room-code').onclick=()=>navigator.clipboard?.writeText(roomId||'');q('mpv-close').onclick=()=>root.classList.remove('open');
+  /* The legacy open button still opens #multiplayer. Its old handler is harmless; we reset to the new menu. */
+  const openBtn=document.getElementById('open-multiplayer');openBtn?.addEventListener('click',()=>{show('mpv-menu');if(!name()){ /* settings owns player name */ }});
+})();
+</script>
 </body>
 </html>

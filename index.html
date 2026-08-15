@@ -12,6 +12,242 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 
   <style>
+
+    /* GAME-LIKE LANDSCAPE UI: never scroll the page or multiplayer panels. */
+    html, body { overflow:hidden !important; overscroll-behavior:none !important; }
+    .lobby, .lobby-main, .panel, #multiplayer-panel, #profile-panel { overflow:hidden !important; }
+    body.mp-create-mode #multiplayer-panel { overflow:hidden !important; padding:10px 14px !important; align-content:stretch !important; }
+    body.mp-create-mode #mp-create-page {
+      width:min(1120px,100%) !important;
+      height:100% !important;
+      max-height:100% !important;
+      margin:0 auto !important;
+      display:grid !important;
+      grid-template-rows:auto 1fr auto !important;
+      gap:7px !important;
+      overflow:hidden !important;
+    }
+    body.mp-create-mode .mp-create-head { min-height:42px; display:flex; align-items:center; justify-content:space-between; }
+    body.mp-create-mode .mp-create-title { font-size:clamp(26px,4.2vh,42px) !important; }
+    body.mp-create-mode .mp-create-grid {
+      min-height:0 !important;
+      height:100% !important;
+      grid-template-columns:1fr 1fr !important;
+      grid-template-rows:1fr 1fr !important;
+      gap:7px !important;
+      overflow:hidden !important;
+    }
+    body.mp-create-mode .mp-create-section {
+      min-height:0 !important;
+      padding:10px !important;
+      overflow:hidden !important;
+    }
+    body.mp-create-mode .mp-create-section h3 { font-size:17px !important; margin-bottom:7px !important; }
+    body.mp-create-mode .mp-section-kicker { margin-bottom:4px !important; font-size:7px !important; }
+    body.mp-create-mode .mp-form-grid { gap:6px !important; }
+    body.mp-create-mode .mp-field label { margin-bottom:3px !important; font-size:7px !important; }
+    body.mp-create-mode .mp-field .mp-input,
+    body.mp-create-mode .mp-field .mp-select { height:35px !important; min-height:35px !important; font-size:10px !important; padding:0 9px !important; }
+    body.mp-create-mode .mp-toggle-list { gap:5px !important; }
+    body.mp-create-mode .mp-toggle-row { padding:7px 8px !important; }
+    body.mp-create-mode .mp-toggle-row b { font-size:8px !important; }
+    body.mp-create-mode .mp-toggle-row small { font-size:6.5px !important; margin-top:2px !important; }
+    body.mp-create-mode .mp-toggle-row input { width:16px !important; height:16px !important; }
+    body.mp-create-mode .mp-create-note { margin-top:6px !important; padding:6px 8px !important; font-size:6.5px !important; }
+    body.mp-create-mode .mp-create-actions { min-height:44px; justify-content:stretch; }
+    body.mp-create-mode .mp-create-confirm-large { width:100% !important; height:44px !important; min-width:0 !important; font-size:12px !important; }
+    body.mp-create-mode #mp-create-back { height:38px !important; }
+    .mp-size-hidden { display:none !important; }
+
+    /* Landscape phones: compress further so the entire Create Room form remains on one screen. */
+    @media (orientation:landscape) and (max-height:520px) {
+      body.mp-create-mode #multiplayer-panel { padding:6px 10px !important; }
+      body.mp-create-mode #mp-create-page { gap:5px !important; }
+      body.mp-create-mode .mp-create-head { min-height:36px; }
+      body.mp-create-mode .mp-create-title { font-size:25px !important; }
+      body.mp-create-mode .mp-create-section { padding:7px !important; }
+      body.mp-create-mode .mp-create-section h3 { font-size:15px !important; margin-bottom:5px !important; }
+      body.mp-create-mode .mp-field .mp-input,
+      body.mp-create-mode .mp-field .mp-select { height:30px !important; min-height:30px !important; }
+      body.mp-create-mode .mp-create-actions { min-height:38px; }
+      body.mp-create-mode .mp-create-confirm-large { height:38px !important; }
+    }
+
+    /* Multiplayer uses the full lobby width; remove the decorative hero block there. */
+    .lobby-main.mp-full-layout { grid-template-columns: 1fr !important; }
+    .lobby-main.mp-full-layout .lobby-copy { display:none !important; }
+    .lobby-main:has(#multiplayer-panel.active) {
+      grid-template-columns: 1fr !important;
+    }
+    .lobby-main:has(#multiplayer-panel.active) .lobby-copy {
+      display: none !important;
+    }
+    #multiplayer-panel.active {
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+
+
+    /* Clean full-width lobby: no poster/hero column and no permanent footer. */
+    .lobby-main { grid-template-columns: 1fr !important; }
+    .panel { width:100%; }
+    .top-actions { margin-left:auto; display:flex; align-items:center; gap:8px; }
+    .fullscreen-btn {
+      width:42px;height:42px;border:1px solid rgba(255,255,255,.14);
+      color:#fff;background:rgba(255,255,255,.04);font:800 20px/1 Inter;
+      cursor:pointer;display:grid;place-items:center;
+    }
+    .fullscreen-btn:hover { border-color:rgba(89,216,255,.5); background:rgba(89,216,255,.08); }
+    body.mp-create-mode #start-screen { inset:0; }
+    body.mp-create-mode .lobby-top,
+    body.mp-create-mode #settings { display:none !important; }
+    body.mp-create-mode .lobby {
+      width:100%;height:100%;max-width:none;border:0;background:#071114;
+    }
+    body.mp-create-mode .lobby-main {
+      height:100%;grid-template-columns:1fr !important;
+    }
+    body.mp-create-mode #multiplayer-panel {
+      padding:clamp(18px,5vw,60px);
+      align-content:center;
+    }
+    body.mp-create-mode #mp-create-page {
+      width:min(760px,100%) !important;
+      margin:0 auto;
+    }
+
+
+    .mp-create-head{margin-bottom:2px}
+    .mp-create-title{font:900 clamp(30px,4vw,46px)/.95 "Barlow Condensed";letter-spacing:2px;color:#f4f4f2}
+    .mp-create-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .mp-create-section{border:1px solid rgba(255,255,255,.12);background:rgba(7,24,28,.84);min-width:0}
+    .mp-create-section h3{margin:0 0 12px;font:900 22px/1 "Barlow Condensed";letter-spacing:1.5px}
+    .mp-section-kicker{font:800 8px/1 Inter;color:#ff4655;letter-spacing:2px;margin-bottom:6px}
+    .mp-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .mp-field{min-width:0}
+    .mp-field.full{grid-column:1/-1}
+    .mp-field label{display:block;margin:0 0 5px;color:#829491;font:800 8px/1 Inter;letter-spacing:1.2px}
+    .mp-field .mp-input,.mp-field .mp-select{width:100%;height:48px}
+    .mp-toggle-list{display:grid;gap:8px}
+    .mp-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 11px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);cursor:pointer}
+    .mp-toggle-row b{display:block;color:#eaf3f1;font:800 9px/1.2 Inter;letter-spacing:.7px}
+    .mp-toggle-row small{display:block;margin-top:4px;color:#71817f;font:600 7px/1.35 Inter;max-width:440px}
+    .mp-toggle-row input{width:20px;height:20px;accent-color:#ff4655;flex:0 0 auto}
+    .mp-create-note{margin-top:10px;padding:10px;border-left:2px solid #ffd447;background:rgba(255,212,71,.04);color:#8a9895;font:600 8px/1.45 Inter}
+    .mp-create-actions{display:flex;justify-content:flex-end;gap:10px}
+    .mp-create-confirm-large{min-width:240px;height:58px;font-size:14px}
+    @media(max-width:760px){
+      .mp-create-grid{grid-template-columns:1fr}
+      .mp-form-grid{grid-template-columns:1fr}
+      .mp-field.full{grid-column:auto}
+      .mp-create-actions{justify-content:stretch}
+      .mp-create-confirm-large{width:100%}
+    }
+
+    /* Larger multiplayer search area and a clear Create Room action beneath it. */
+    #multiplayer-panel.active .mp-home {
+      width:min(1180px,100%);
+      margin:0 auto;
+    }
+    #multiplayer-panel.active .mp-card {
+      width:100%;
+      padding:clamp(18px,3vw,28px);
+    }
+    #multiplayer-panel.active .mp-card h3 { font-size:clamp(28px,3.4vw,42px); }
+    #multiplayer-panel.active .mp-search {
+      width:100%; gap:10px; margin-top:14px;
+    }
+    #multiplayer-panel.active .mp-search .mp-input {
+      height:56px; font-size:12px; letter-spacing:1.4px;
+    }
+    #multiplayer-panel.active .mp-search .mp-btn {
+      min-width:110px;height:56px;
+    }
+    #multiplayer-panel.active .mp-room-list {
+      min-height:170px;max-height:min(42vh,390px);margin-top:12px;
+    }
+    #multiplayer-panel.active .mp-create-bottom {
+      width:100%; max-width:none; margin-top:2px; height:58px;
+      font-size:14px;
+    }
+    #multiplayer-panel.active .mp-status-wrap,
+    #multiplayer-panel.active .mp-error-box {
+      width:100%;
+    }
+
+
+    /* V6: Multiplayer home must fit in one landscape viewport; CREATE ROOM is always visible. */
+    #multiplayer-panel.active .mp-home {
+      height:100%;
+      max-height:100%;
+      box-sizing:border-box;
+      grid-template-rows:auto minmax(0,1fr) auto auto;
+      align-content:stretch;
+      overflow:hidden !important;
+    }
+    #multiplayer-panel.active .mp-card {
+      min-height:0;
+      max-height:100%;
+      box-sizing:border-box;
+      display:grid;
+      grid-template-rows:auto auto auto minmax(0,1fr);
+      overflow:hidden;
+    }
+    #multiplayer-panel.active .mp-room-list {
+      min-height:0;
+      max-height:none;
+      overflow:auto;
+    }
+    #multiplayer-panel.active .mp-create-bottom {
+      display:block !important;
+      flex:0 0 auto;
+      margin:0;
+      height:clamp(46px,7vh,58px);
+    }
+    #multiplayer-panel.active .mp-status-wrap {
+      min-height:0;
+      max-height:24px;
+      overflow:hidden;
+    }
+    #multiplayer-panel.active .mp-error-box {
+      max-height:70px;
+      overflow:auto;
+    }
+    @media (max-height:520px) and (orientation:landscape) {
+      #multiplayer-panel.active .mp-topline h2 { font-size:clamp(30px,6vh,42px); }
+      #multiplayer-panel.active .mp-card { padding:12px 16px; }
+      #multiplayer-panel.active .mp-card h3 { font-size:clamp(24px,5vh,34px); margin-bottom:4px; }
+      #multiplayer-panel.active .mp-card p { margin:0 0 5px; font-size:8px; }
+      #multiplayer-panel.active .mp-search { margin-top:4px; }
+      #multiplayer-panel.active .mp-search .mp-input,
+      #multiplayer-panel.active .mp-search .mp-btn { height:44px; }
+      #multiplayer-panel.active .mp-room-list { margin-top:5px; }
+      #multiplayer-panel.active .mp-create-bottom { height:44px; font-size:11px; }
+      #multiplayer-panel.active .mp-status-wrap { display:none; }
+    }
+
+    /* Firebase error/status panel */
+    .mp-error-box {
+      display: none;
+      margin-top: 10px;
+      border: 1px solid rgba(255,70,85,.65);
+      background: rgba(80,8,18,.35);
+      color: #ff9da6;
+      padding: 10px 12px;
+      font: 700 10px/1.45 Inter, sans-serif;
+      letter-spacing: .5px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .mp-error-box.show { display: block; }
+    .mp-error-box strong {
+      display: block;
+      color: #ff4655;
+      margin-bottom: 4px;
+      letter-spacing: 1.2px;
+    }
+    .mp-create-bottom { position: relative; z-index: 5; cursor: pointer; }
+
     @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700&family=Inter:wght@500;600;700&display=swap');
 
     :root { --red: #ff4655; --ink: #0b1518; --cyan: #59d8ff; --cream: #ece8e1; }
@@ -207,8 +443,6 @@
     .choice .stats { margin-top:10px; color:#9fdedb; font:700 8px/1 Inter; word-spacing:5px; }
     .map-grid { grid-template-columns:1fr 1fr; margin-top:12px; }
     .map-choice { min-height:90px; }
-    .lobby-foot { display:flex; align-items:center; justify-content:space-between; padding:0 clamp(18px,4vw,58px); border-top:1px solid rgba(255,255,255,.08); color:#667976; font:700 8px/1 Inter; letter-spacing:1.5px; }
-    .deploy { min-width:190px; }
     #settings { position:fixed; inset:0; z-index:25; display:none; place-items:center; background:rgba(1,8,10,.84); backdrop-filter:blur(8px); pointer-events:auto; }
     #settings.open { display:grid; }
     .settings-panel { width:min(480px,calc(100% - 28px)); padding:28px; background:#0b1d21; border:1px solid rgba(98,218,215,.28); box-shadow:0 25px 80px #000; }
@@ -398,29 +632,356 @@ body::before{
 }
 
   
-/* ===== FIREBASE MULTIPLAYER ===== */
-#mp-panel{align-content:start!important;padding-top:clamp(18px,4vw,46px)}
-.mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:720px}
-.mp-card{border:1px solid rgba(255,255,255,.12);background:rgba(8,27,31,.62);padding:16px}
-.mp-card h3{margin:0 0 10px;font:800 22px/1 "Barlow Condensed";letter-spacing:1px}
-.mp-card p{margin:0 0 12px;color:#7f9290;font:600 9px/1.5 Inter}
-.mp-input{width:100%;height:40px;color:#fff;background:#08181c;border:1px solid rgba(255,255,255,.14);padding:0 11px;font:700 11px Inter;letter-spacing:1px;text-transform:uppercase}
-.mp-actions{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap}
-.mp-btn{border:1px solid rgba(89,216,255,.35);background:#0c2930;color:#fff;padding:11px 13px;font:800 9px/1 Inter;letter-spacing:1.5px;cursor:pointer}
-.mp-btn.primary{background:#ff4655;border-color:#ff4655}
-.mp-btn:disabled{opacity:.35;cursor:not-allowed}
-#mp-status{margin-top:12px;padding:9px 11px;border-left:2px solid #59d8ff;background:rgba(4,18,22,.55);color:#9db1af;font:700 8px/1.4 Inter;letter-spacing:1px}
-#mp-status.ok{border-color:#6df0c2;color:#b8f6dd}
-#mp-status.err{border-color:#ff4655;color:#ffb5bc}
-#mp-room-code{color:#6df0c2;font:900 25px/1 "Barlow Condensed";letter-spacing:4px}
-#mp-player-list{margin-top:10px;display:grid;gap:5px}
-.mp-player{display:flex;justify-content:space-between;padding:7px 9px;background:rgba(255,255,255,.035);font:700 8px/1 Inter}
-.mp-player span:last-child{color:#6df0c2}
-#mp-hud{position:fixed;right:14px;top:max(86px,calc(env(safe-area-inset-top) + 72px));z-index:8;display:none;pointer-events:none;padding:7px 10px;background:rgba(4,18,22,.68);border:1px solid rgba(89,216,255,.2);backdrop-filter:blur(8px);color:#a9bfbd;font:800 8px/1 Inter;letter-spacing:1.2px}
-#mp-hud b{color:#6df0c2}
-@media(max-width:700px){.mp-grid{grid-template-columns:1fr}#mp-hud{right:8px;top:78px;font-size:7px}}
+/* ===== RIFT MULTIPLAYER 2.0 ===== */
+#multiplayer-panel,#profile-panel{align-content:start!important;padding-top:clamp(12px,3vw,34px);overflow:hidden}
+.mp-home{width:min(920px,100%);display:grid;gap:12px}
+.mp-topline{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.mp-topline h2{margin:0}.mp-sub{margin:5px 0 0;color:#7f9290;font:600 9px/1.5 Inter}
+.mp-search{display:flex;gap:8px;margin-top:8px}.mp-search .mp-input{flex:1}
+.mp-card{border:1px solid rgba(255,255,255,.12);background:linear-gradient(145deg,rgba(8,27,31,.88),rgba(5,16,19,.66));padding:15px;box-shadow:inset 0 1px rgba(255,255,255,.025)}
+.mp-card h3{margin:0 0 7px;font:800 22px/1 "Barlow Condensed";letter-spacing:1px}.mp-card p{margin:0 0 10px;color:#7f9290;font:600 9px/1.5 Inter}
+.mp-room-list{max-height:300px;overflow:auto}.mp-open-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid rgba(255,255,255,.08)}.mp-open-row:first-child{border-top:0}.mp-open-meta{display:flex;flex-direction:column;gap:3px;min-width:0}.mp-open-code{font-weight:900;letter-spacing:.12em;color:#e9fffc}.mp-open-host{font-size:10px;color:#9aa6b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mp-open-map{font-size:8px;color:#6df0c2;text-transform:uppercase;letter-spacing:1px}.mp-open-count{font-size:10px;color:#7fe8e2;white-space:nowrap}.mp-empty{padding:16px 0;color:#7f8994;font-size:10px;text-align:center}
+.mp-btn{border:1px solid rgba(89,216,255,.35);background:#0c2930;color:#fff;padding:11px 13px;font:800 9px/1 Inter;letter-spacing:1.5px;cursor:pointer}.mp-btn.primary{background:#ff4655;border-color:#ff4655}.mp-btn.gold{background:linear-gradient(135deg,#ffd447,#a66b00);border-color:#ffd447;color:#111}.mp-btn:disabled{opacity:.35;cursor:not-allowed}.mp-actions{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap}
+.mp-create-bottom{width:100%;padding:15px;font:900 12px/1 "Barlow Condensed";letter-spacing:2px}.mp-input{width:100%;height:40px;color:#fff;background:#08181c;border:1px solid rgba(255,255,255,.14);padding:0 11px;font:700 11px Inter;letter-spacing:1px;text-transform:uppercase;box-sizing:border-box}.mp-select{height:40px;width:100%;background:#08181c;color:#fff;border:1px solid rgba(255,255,255,.14);padding:0 10px;font:700 10px Inter}
+#mp-status{padding:9px 11px;border-left:2px solid #59d8ff;background:rgba(4,18,22,.55);color:#9db1af;font:700 8px/1.4 Inter;letter-spacing:1px}.mp-status-wrap{min-height:0}#mp-status.ok{border-color:#6df0c2;color:#b8f6dd}#mp-status.err{border-color:#ff4655;color:#ffb5bc}
+#mp-room-page{display:none;width:min(980px,100%);gap:12px}.mp-room-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid rgba(255,255,255,.13);background:rgba(4,17,20,.78)}.mp-room-head small{display:block;color:#778b89;font:700 8px/1 Inter;letter-spacing:1.5px}.mp-room-id{font:900 28px/1 "Barlow Condensed";letter-spacing:5px;color:#6df0c2}.mp-room-layout{display:grid;grid-template-columns:.82fr 1.18fr;gap:12px}.mp-room-info,.mp-team-card{border:1px solid rgba(255,255,255,.12);background:rgba(7,24,28,.82);padding:14px}.mp-room-info h3,.mp-team-card h3{margin:0 0 10px;font:800 20px/1 "Barlow Condensed"}.mp-info-line{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font:700 9px/1.2 Inter}.mp-info-line span:first-child{color:#738683}.mp-info-line span:last-child{text-align:right;color:#e9fffc}.mp-teams{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mp-team{border:1px solid rgba(85,217,255,.18);background:rgba(0,90,120,.08);padding:10px}.mp-team.red{border-color:rgba(255,70,85,.28);background:rgba(130,20,35,.08)}.mp-team h4{margin:0 0 7px;font:900 13px/1 "Barlow Condensed";letter-spacing:1px}.mp-team.red h4{color:#ff6672}.mp-team.blue h4{color:#5bdcff}.mp-team-player{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:7px 5px;border-top:1px solid rgba(255,255,255,.06);font:700 8px/1.2 Inter}.mp-team-player.host{color:#ffd447;text-shadow:0 0 12px rgba(255,212,71,.35)}.mp-host-tag{color:#ffd447;font-weight:900;font-size:9px;margin-left:5px}.mp-team-switch{display:flex;gap:4px}.mp-team-switch button{padding:4px 5px;font:900 7px Inter;border:1px solid rgba(255,255,255,.12);background:#10272b;color:#fff}.mp-team-switch button.active{background:#ffd447;color:#111;border-color:#ffd447}.mp-host-glow{animation:hostGold 1.8s ease-in-out infinite}@keyframes hostGold{50%{box-shadow:0 0 22px rgba(255,212,71,.18)}}.mp-deploy-wait{opacity:.58;animation:riftPulse 1.6s ease-in-out infinite}@keyframes riftPulse{50%{opacity:.32}}
+.mp-room-footer{display:flex;gap:8px}.mp-room-footer .mp-btn{flex:1}.mp-room-start{width:100%;padding:16px;font:900 14px/1 "Barlow Condensed";letter-spacing:2px}
+#mp-start-countdown{position:fixed;inset:0;z-index:80;display:none;place-items:center;background:rgba(1,7,9,.88);backdrop-filter:blur(8px);text-align:center}.mp-count-card small{color:#ff4655;font:900 10px Inter;letter-spacing:3px}.mp-count-number{font:900 clamp(110px,24vw,240px)/.8 "Barlow Condensed";font-style:italic;color:#f4f7f5;text-shadow:0 0 40px rgba(255,70,85,.28)}.mp-count-copy{font:800 10px Inter;letter-spacing:2px;color:#8fa4a1}
+#profile-panel .profile-card{width:min(520px,100%);border:1px solid rgba(255,255,255,.12);background:rgba(7,24,28,.82);padding:18px}.profile-name-save{display:flex;gap:8px;margin-top:10px}.profile-name-save .mp-input{flex:1}.profile-note{color:#728481;font:600 9px/1.5 Inter;margin-top:9px}
+#settings .settings-panel{position:relative}.settings-back{position:absolute;top:18px;right:18px;border:1px solid rgba(255,255,255,.15);background:#10252a;color:#fff;padding:9px 12px;font:800 8px Inter;letter-spacing:1px}
+#mp-hud{position:fixed;right:14px;top:max(86px,calc(env(safe-area-inset-top) + 72px));z-index:8;display:none;pointer-events:none;padding:7px 10px;background:rgba(4,18,22,.68);border:1px solid rgba(89,216,255,.2);backdrop-filter:blur(8px);color:#a9bfbd;font:800 8px/1 Inter;letter-spacing:1.2px}#mp-hud b{color:#6df0c2}
+@media(max-width:700px){.mp-room-layout{grid-template-columns:1fr}.mp-teams{grid-template-columns:1fr 1fr}.mp-room-footer{flex-direction:column}.mp-room-id{font-size:24px}#mp-hud{right:8px;top:78px;font-size:7px}}
 
-  </style>
+  
+/* V7 COMPACT MULTIPLAYER HOME
+   Keep all multiplayer controls visible without making the UI feel like a long web page. */
+#multiplayer-panel.active {
+  overflow:hidden !important;
+  padding:10px 16px 8px !important;
+}
+#multiplayer-panel.active .mp-home {
+  height:100% !important;
+  max-height:100% !important;
+  display:grid !important;
+  grid-template-rows:auto auto minmax(0,1fr) auto !important;
+  gap:8px !important;
+  overflow:hidden !important;
+}
+#multiplayer-panel.active .mp-topline {
+  min-height:0 !important;
+  padding:0 !important;
+}
+#multiplayer-panel.active .mp-topline h2 {
+  font-size:clamp(30px,4.8vw,48px) !important;
+  line-height:.9 !important;
+  margin:0 !important;
+}
+#multiplayer-panel.active .mp-sub {
+  margin:4px 0 0 !important;
+  font-size:9px !important;
+  letter-spacing:.8px !important;
+}
+#multiplayer-panel.active .mp-card {
+  width:100% !important;
+  min-height:0 !important;
+  max-height:none !important;
+  padding:12px 14px !important;
+  display:grid !important;
+  grid-template-rows:auto auto auto minmax(0,1fr) !important;
+  gap:7px !important;
+  overflow:hidden !important;
+  box-sizing:border-box !important;
+}
+#multiplayer-panel.active .mp-card h3 {
+  font-size:20px !important;
+  margin:0 !important;
+}
+#multiplayer-panel.active .mp-card > p {
+  font-size:8px !important;
+  margin:0 !important;
+}
+#multiplayer-panel.active .mp-search {
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) 74px !important;
+  gap:6px !important;
+}
+#multiplayer-panel.active .mp-search .mp-input,
+#multiplayer-panel.active .mp-search .mp-btn {
+  height:38px !important;
+  min-height:38px !important;
+  font-size:9px !important;
+}
+#multiplayer-panel.active .mp-search .mp-btn {
+  min-width:74px !important;
+}
+#multiplayer-panel.active .mp-room-list {
+  min-height:0 !important;
+  max-height:none !important;
+  margin-top:0 !important;
+  overflow:auto !important;
+  padding-right:2px !important;
+}
+#multiplayer-panel.active .mp-create-bottom {
+  width:100% !important;
+  height:42px !important;
+  min-height:42px !important;
+  margin:0 !important;
+  font-size:11px !important;
+  letter-spacing:1.2px !important;
+}
+
+/* Compact room cards inside the list */
+#multiplayer-panel.active .mp-room-card {
+  padding:8px 10px !important;
+  min-height:0 !important;
+}
+#multiplayer-panel.active .mp-room-card h4 {
+  font-size:12px !important;
+}
+#multiplayer-panel.active .mp-room-card p,
+#multiplayer-panel.active .mp-room-card small {
+  font-size:7px !important;
+}
+#multiplayer-panel.active .mp-room-card .mp-btn {
+  height:30px !important;
+  min-height:30px !important;
+  font-size:8px !important;
+}
+
+/* Compact feature strip: all supported match sizes stay visible on the same screen. */
+.mp-quick-features {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex-wrap:nowrap;
+  overflow:hidden;
+  margin:0;
+}
+.mp-quick-features span {
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(8,25,29,.72);
+  padding:5px 8px;
+  font:700 7px/1 Inter,sans-serif;
+  letter-spacing:1px;
+  white-space:nowrap;
+}
+
+
+/* ===== FINAL COMPACT LANDSCAPE PASS ===== */
+html,body,#start-screen,.lobby,.lobby-main,.panel{overflow:hidden!important;}
+.lobby{grid-template-rows:64px 1fr!important;}
+.lobby-main{height:calc(100vh - 64px)!important;min-height:0!important;}
+.panel{min-height:0!important;}
+.play-start-wrap{display:flex;justify-content:flex-end;align-items:center;margin-top:10px;}
+#play-panel #start{display:block!important;width:150px!important;min-width:150px!important;height:42px!important;padding:0 14px!important;font-size:10px!important;letter-spacing:1.5px!important;}
+#multiplayer-panel.active{padding:8px 14px 6px!important;}
+#multiplayer-panel.active .mp-home{width:min(100%,980px)!important;margin:0 auto!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;gap:5px!important;}
+#multiplayer-panel.active .mp-topline h2{font-size:clamp(25px,3.8vw,38px)!important;}
+#multiplayer-panel.active .mp-sub{font-size:7px!important;margin:2px 0 0!important;}
+#multiplayer-panel.active .mp-quick-features{gap:4px!important;margin:0!important;}
+#multiplayer-panel.active .mp-quick-features span{padding:4px 6px!important;font-size:6px!important;}
+#multiplayer-panel.active .mp-card{padding:8px 10px!important;gap:4px!important;}
+#multiplayer-panel.active .mp-card h3{font-size:16px!important;}
+#multiplayer-panel.active .mp-card>p{font-size:6.5px!important;margin:0!important;}
+#multiplayer-panel.active .mp-search{gap:5px!important;margin-top:3px!important;}
+#multiplayer-panel.active .mp-search .mp-input,#multiplayer-panel.active .mp-search .mp-btn{height:34px!important;font-size:8px!important;}
+#multiplayer-panel.active .mp-search .mp-btn{min-width:64px!important;padding:0 8px!important;}
+#multiplayer-panel.active .mp-room-list{min-height:0!important;max-height:none!important;overflow:hidden!important;margin-top:2px!important;}
+#multiplayer-panel.active .mp-open-row{padding:5px 0!important;gap:5px!important;}
+#multiplayer-panel.active .mp-open-host{font-size:7px!important;}
+#multiplayer-panel.active .mp-open-map,#multiplayer-panel.active .mp-open-count{font-size:6px!important;}
+#multiplayer-panel.active .mp-open-code{font-size:8px!important;}
+#multiplayer-panel.active .mp-open-row .mp-btn{padding:5px 7px!important;font-size:6px!important;}
+#multiplayer-panel.active .mp-empty{padding:8px 0!important;font-size:7px!important;}
+#multiplayer-panel.active .mp-create-bottom{width:180px!important;justify-self:end!important;height:36px!important;padding:0!important;font-size:9px!important;margin:0!important;}
+#multiplayer-panel.active .mp-status-wrap,#multiplayer-panel.active .mp-error-box{display:none!important;}
+body.mp-create-mode #multiplayer-panel{padding:8px 14px!important;}
+body.mp-create-mode #mp-create-page{width:min(100%,980px)!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:5px!important;}
+body.mp-create-mode .mp-create-head{min-height:38px!important;}
+body.mp-create-mode .mp-create-title{font-size:clamp(24px,4vh,34px)!important;}
+body.mp-create-mode .mp-create-grid{gap:5px!important;}
+body.mp-create-mode .mp-create-section{padding:7px!important;}
+body.mp-create-mode .mp-create-section h3{font-size:14px!important;margin:2px 0 4px!important;}
+body.mp-create-mode .mp-section-kicker{font-size:6px!important;margin:0!important;}
+body.mp-create-mode .mp-form-grid{gap:4px!important;}
+body.mp-create-mode .mp-field label{font-size:6px!important;margin-bottom:2px!important;}
+body.mp-create-mode .mp-field .mp-input,body.mp-create-mode .mp-field .mp-select{height:30px!important;min-height:30px!important;font-size:8px!important;padding:0 7px!important;}
+body.mp-create-mode .mp-toggle-list{gap:3px!important;}
+body.mp-create-mode .mp-toggle-row{padding:5px 6px!important;}
+body.mp-create-mode .mp-toggle-row b{font-size:7px!important;}
+body.mp-create-mode .mp-toggle-row small{font-size:5.5px!important;}
+body.mp-create-mode .mp-toggle-row input{width:13px!important;height:13px!important;}
+body.mp-create-mode .mp-create-note{font-size:5.5px!important;margin-top:3px!important;padding:4px 6px!important;}
+body.mp-create-mode .mp-create-actions{min-height:34px!important;}
+body.mp-create-mode .mp-create-confirm-large{height:34px!important;font-size:9px!important;}
+#mp-room-page{overflow:hidden!important;min-height:0!important;}
+#mp-room-page .mp-room-layout{min-height:0!important;overflow:hidden!important;}
+#mp-room-page .mp-room-footer{margin-top:5px!important;}
+#mp-room-page .mp-room-start{padding:9px!important;font-size:10px!important;}
+#mp-room-page .mp-card,#mp-room-page .mp-team{overflow:hidden!important;}
+.mp-team-player.host{animation:hostGold 1.8s ease-in-out infinite!important;}
+.lobby-foot,.desktop-hint,#game:after{display:none!important;}
+
+/* ===== CREATE ROOM INTERNAL FEATURE SCROLL FIX ===== */
+/* Keep the overall landscape page fixed, but allow each settings card to scroll internally
+   so every ROOM DETAILS / MATCH SETTINGS / START CONDITIONS option remains reachable. */
+body.mp-create-mode #mp-create-page {
+  min-height:0 !important;
+  height:100% !important;
+  overflow:hidden !important;
+}
+body.mp-create-mode #mp-create-page .mp-create-grid {
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+body.mp-create-mode #mp-create-page .mp-create-section {
+  min-height:0 !important;
+  max-height:100% !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  -webkit-overflow-scrolling:touch !important;
+  scrollbar-width:thin;
+  overscroll-behavior:contain;
+}
+body.mp-create-mode #mp-create-page .mp-create-section::-webkit-scrollbar { width:6px; }
+body.mp-create-mode #mp-create-page .mp-create-section::-webkit-scrollbar-thumb {
+  background:rgba(255,70,85,.55);
+  border-radius:8px;
+}
+body.mp-create-mode #mp-create-page .mp-create-section::-webkit-scrollbar-track {
+  background:rgba(255,255,255,.035);
+}
+@media (orientation:landscape) {
+  body.mp-create-mode #mp-create-page {
+    grid-template-rows:auto minmax(0,1fr) auto !important;
+  }
+  body.mp-create-mode #mp-create-page .mp-create-grid {
+    height:100% !important;
+  }
+  body.mp-create-mode #mp-create-page .mp-create-section {
+    height:100% !important;
+  }
+}
+
+/* ===== V8 STRICT NO-SCROLL LANDSCAPE + COMPACT ROOM SYSTEM ===== */
+@media (orientation: landscape) {
+  html, body, .lobby, .lobby-main, .panel, #multiplayer-panel, #mp-home-view,
+  #mp-create-page, #mp-room-page, .mp-home, .mp-card, .mp-room-layout,
+  .mp-room-info, .mp-team-card { overflow:hidden !important; }
+
+  #multiplayer-panel.active .mp-home {
+    width:min(1180px,100%) !important;
+    height:100% !important;
+    max-height:100% !important;
+    grid-template-rows:auto auto minmax(0,1fr) auto !important;
+    gap:5px !important;
+  }
+
+  /* Room browser: compact multi-column cards, never an internal scrollbar. */
+  #multiplayer-panel.active .mp-room-list {
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    align-content:start !important;
+    gap:4px 12px !important;
+    max-height:none !important;
+    height:100% !important;
+    overflow:hidden !important;
+    padding:0 !important;
+  }
+  #multiplayer-panel.active .mp-open-row {
+    min-width:0 !important;
+    padding:5px 6px !important;
+    border:1px solid rgba(255,255,255,.07) !important;
+    background:rgba(7,24,28,.42) !important;
+    gap:5px !important;
+  }
+  #multiplayer-panel.active .mp-open-meta { min-width:0 !important; }
+  #multiplayer-panel.active .mp-open-code { font-size:8px !important; }
+  #multiplayer-panel.active .mp-open-host { font-size:6.5px !important; }
+  #multiplayer-panel.active .mp-open-map,
+  #multiplayer-panel.active .mp-open-count { font-size:6px !important; }
+  #multiplayer-panel.active .mp-open-row .mp-btn {
+    flex:0 0 auto !important;
+    padding:5px 7px !important;
+    min-width:42px !important;
+    height:24px !important;
+    font-size:6px !important;
+  }
+
+  /* Small Create Room action — never a huge web-style bar. */
+  #multiplayer-panel.active .mp-create-bottom {
+    width:170px !important;
+    height:34px !important;
+    min-height:34px !important;
+    justify-self:end !important;
+    padding:0 !important;
+    font-size:9px !important;
+    letter-spacing:1.2px !important;
+  }
+
+  /* Create Room is a dedicated game screen and must fit completely. */
+  body.mp-create-mode #multiplayer-panel { padding:6px 12px !important; }
+  body.mp-create-mode #mp-create-page {
+    width:min(1120px,100%) !important;
+    height:100% !important;
+    max-height:100% !important;
+    grid-template-rows:34px minmax(0,1fr) 34px !important;
+    gap:4px !important;
+    overflow:hidden !important;
+  }
+  body.mp-create-mode .mp-create-head { min-height:34px !important; padding:0 8px !important; }
+  body.mp-create-mode .mp-create-title { font-size:25px !important; }
+  body.mp-create-mode #mp-create-back { height:28px !important; padding:0 10px !important; font-size:7px !important; }
+  body.mp-create-mode .mp-create-grid {
+    grid-template-columns:1fr 1fr !important;
+    grid-template-rows:1fr 1fr !important;
+    gap:4px !important;
+    overflow:hidden !important;
+  }
+  body.mp-create-mode .mp-create-section { padding:6px !important; }
+  body.mp-create-mode .mp-create-section h3 { font-size:13px !important; margin:1px 0 3px !important; }
+  body.mp-create-mode .mp-form-grid { gap:3px !important; }
+  body.mp-create-mode .mp-field label { font-size:5.5px !important; margin-bottom:2px !important; }
+  body.mp-create-mode .mp-field .mp-input,
+  body.mp-create-mode .mp-field .mp-select { height:27px !important; min-height:27px !important; font-size:7.5px !important; }
+  body.mp-create-mode .mp-toggle-list { gap:2px !important; }
+  body.mp-create-mode .mp-toggle-row { padding:4px 5px !important; }
+  body.mp-create-mode .mp-toggle-row b { font-size:6.5px !important; }
+  body.mp-create-mode .mp-toggle-row small { font-size:5px !important; }
+  body.mp-create-mode .mp-toggle-row input { width:12px !important; height:12px !important; }
+  body.mp-create-mode .mp-create-note { margin-top:2px !important; padding:3px 5px !important; font-size:5px !important; }
+  body.mp-create-mode .mp-create-actions { min-height:34px !important; }
+  body.mp-create-mode .mp-create-confirm-large { width:180px !important; height:32px !important; min-height:32px !important; margin-left:auto !important; font-size:9px !important; }
+
+  /* Room lobby: compact, single-screen tactical layout. */
+  #mp-room-page { height:100% !important; max-height:100% !important; grid-template-rows:38px minmax(0,1fr) 32px !important; gap:5px !important; }
+  #mp-room-page .mp-room-head { min-height:38px !important; padding:5px 10px !important; }
+  #mp-room-page .mp-room-id { font-size:22px !important; }
+  #mp-room-page .mp-room-layout { grid-template-columns:.75fr 1.25fr !important; gap:5px !important; }
+  #mp-room-page .mp-room-info,
+  #mp-room-page .mp-team-card { padding:7px !important; }
+  #mp-room-page .mp-room-info h3,
+  #mp-room-page .mp-team-card h3 { font-size:14px !important; margin-bottom:5px !important; }
+  #mp-room-page .mp-info-line { padding:4px 0 !important; font-size:7px !important; }
+  #mp-room-page .mp-teams { gap:5px !important; }
+  #mp-room-page .mp-team { padding:5px !important; }
+  #mp-room-page .mp-team h4 { font-size:10px !important; margin-bottom:4px !important; }
+  #mp-room-page .mp-team-player { padding:4px 3px !important; font-size:6.5px !important; }
+  #mp-room-page .mp-room-footer { gap:5px !important; margin-top:3px !important; }
+  #mp-room-page .mp-room-footer .mp-btn { height:30px !important; padding:0 8px !important; font-size:7px !important; }
+  #mp-room-page .mp-room-start { padding:0 !important; font-size:9px !important; }
+}
+
+
+/* FINAL V9: one Create Room action per screen; Play start button sits higher on landscape/mobile. */
+#mp-home-view[hidden], #mp-create-page[hidden], #mp-room-page[hidden] { display:none !important; }
+@media (orientation:landscape) {
+  #play-panel .play-start-wrap { position:relative !important; top:-24px !important; margin-top:-6px !important; }
+}
+@media (orientation:landscape) and (max-height:520px) {
+  #play-panel .play-start-wrap { top:-30px !important; margin-top:-10px !important; }
+}
+</style>
 </head>
 <body>
   <div id="game"></div>
@@ -565,15 +1126,13 @@ body::before{
     <div class="lobby">
       <header class="lobby-top">
         <div class="lobby-logo">RIFT<em>//</em>PROTOCOL</div>
-        <nav class="tabs"><button class="tab active" data-tab="play">PLAY</button><button class="tab" data-tab="loadout">AGENT / LOADOUT</button><button class="tab" data-tab="multiplayer">MULTIPLAYER</button></nav>
-        <button class="settings-btn" id="open-settings">SETTINGS</button>
+        <nav class="tabs"><button class="tab active" data-tab="play">PLAY</button><button class="tab" data-tab="loadout">AGENT / LOADOUT</button><button class="tab" data-tab="multiplayer">MULTIPLAYER</button><button class="tab" data-tab="profile">PROFILE</button></nav>
+        <div class="top-actions">
+          <button class="fullscreen-btn" id="fullscreen-btn" aria-label="Enter fullscreen" title="FULLSCREEN">⛶</button>
+          <button class="settings-btn" id="open-settings">SETTINGS</button>
+        </div>
       </header>
       <main class="lobby-main">
-        <section class="lobby-copy">
-          <div class="kicker">TACTICAL COMBAT NETWORK</div>
-          <h1 class="title">RIFT<span>//</span><br>PROTOCOL</h1>
-          <p>Configure your operation, select a combat platform, and deploy into the live-fire simulation.</p>
-        </section>
         <section class="panel active" id="play-panel">
           <div><h2>SELECT OPERATION</h2><p class="panel-sub">Each mode changes bot pressure and mission duration.</p>
             <div class="choice-grid" id="mode-choices">
@@ -585,37 +1144,209 @@ body::before{
               <button class="choice map-choice active" data-value="atlas"><b>ATLAS RANGE</b><small>Sunlit open arena / layered cover</small></button>
               <button class="choice map-choice" data-value="neo"><b>NEO-RIFT</b><small>Neon warehouse / tight hallways</small></button>
             </div>
+            <div class="play-start-wrap"><button class="start-btn" id="start">START SIMULATION</button></div>
           </div>
         </section>
         
         <section class="panel" id="multiplayer-panel">
-          <div>
-            <h2>MULTIPLAYER</h2>
-            <p class="panel-sub">Firebase Realtime Database • private rooms • live player synchronization</p>
-            <div class="mp-grid">
-              <div class="mp-card">
-                <h3>CREATE ROOM</h3>
-                <p>Create a private 2–8 player room and share the generated code.</p>
-                <input id="mp-name-create" class="mp-input" maxlength="16" placeholder="PLAYER NAME">
-                <div class="mp-actions"><button class="mp-btn primary" id="mp-create">CREATE ROOM</button></div>
+          <div class="mp-home" id="mp-home-view">
+            <div class="mp-topline"><div><h2>MULTIPLAYER</h2><p class="mp-sub">AVAILABLE ROOMS • LIVE PLAYERS • 1V1 / 2V2 / 3V3 / 4V4</p></div></div>
+            <div class="mp-quick-features" aria-label="Multiplayer options">
+              <span>1V1</span><span>2V2</span><span>3V3</span><span>4V4</span>
+              <span>PUBLIC</span><span>PRIVATE</span><span>NO BOTS</span>
+            </div>
+            <div class="mp-card">
+              <h3>AVAILABLE ROOMS</h3><p>Live lobby rooms. Search by room ID or host name, then join directly.</p>
+              <div class="mp-search"><input id="mp-search" class="mp-input" maxlength="24" placeholder="SEARCH ROOM ID / HOST"><button id="mp-search-clear" class="mp-btn">CLEAR</button></div>
+              <div id="mp-open-rooms" class="mp-room-list"><div class="mp-empty">SEARCHING FOR ROOMS…</div></div>
+            </div>
+            <button class="mp-btn primary mp-create-bottom" id="mp-create-bottom">+ CREATE ROOM</button>
+            <div class="mp-status-wrap"><div id="mp-status">CONNECTING TO MULTIPLAYER…</div></div>
+            <div id="mp-error-box" class="mp-error-box">
+              <strong>FIREBASE / MULTIPLAYER ERROR</strong>
+              <span id="mp-error-text"></span>
+            </div>
+          </div>
+
+          <div id="mp-create-page" style="display:none;width:min(980px,100%);gap:12px">
+  <div class="mp-room-head mp-create-head">
+    <div>
+      <small>NEW MULTIPLAYER ROOM</small>
+      <div class="mp-create-title">CREATE ROOM</div>
+    </div>
+    <button class="mp-btn" id="mp-create-back">BACK</button>
+  </div>
+
+  <div class="mp-create-grid">
+    <div class="mp-card mp-create-section">
+      <div class="mp-section-kicker">ROOM</div>
+      <h3>ROOM DETAILS</h3>
+      <div class="mp-form-grid">
+        <div class="mp-field full">
+          <label>PLAYER / HOST NAME</label>
+          <input id="mp-create-name" class="mp-input" maxlength="16" placeholder="PLAYER NAME">
+        </div>
+        <div class="mp-field full">
+          <label>ROOM NAME</label>
+          <input id="mp-create-room-name" class="mp-input" maxlength="28" placeholder="ROOM NAME">
+        </div>
+        <div class="mp-field">
+          <label>ROOM TYPE</label>
+          <select id="mp-create-visibility" class="mp-select">
+            <option value="public">PUBLIC</option>
+            <option value="private">PRIVATE</option>
+          </select>
+        </div>
+        <div class="mp-field">
+          <label>ROOM PASSWORD</label>
+          <input id="mp-create-password" class="mp-input" type="password" maxlength="20" placeholder="OPTIONAL">
+        </div>
+      </div>
+    </div>
+
+    <div class="mp-card mp-create-section">
+      <div class="mp-section-kicker">MATCH</div>
+      <h3>MATCH SETTINGS</h3>
+      <div class="mp-form-grid">
+        <div class="mp-field">
+          <label>MAP</label>
+          <select id="mp-create-map" class="mp-select">
+            <option value="atlas">ATLAS RANGE</option>
+            <option value="neo">NEO-RIFT</option>
+          </select>
+        </div>
+        <div class="mp-field">
+          <label>MODE</label>
+          <select id="mp-create-mode" class="mp-select">
+            <option value="range">TACTICAL</option>
+            <option value="deathmatch">DEATHMATCH</option>
+            <option value="survival">SURVIVAL</option>
+          </select>
+        </div>
+        <div class="mp-field">
+          <label>MATCH SIZE</label>
+          <select id="mp-create-size" class="mp-select">
+            <option value="1">1V1</option>
+            <option value="2">2V2</option>
+            <option value="3">3V3</option>
+            <option value="4" selected>4V4</option>
+          </select>
+        </div>
+        <div class="mp-field mp-size-hidden">
+          <label>MAX PLAYERS</label>
+          <select id="mp-create-max-players" class="mp-select">
+            <option value="8">8 PLAYERS</option>
+            <option value="6">6 PLAYERS</option>
+            <option value="4">4 PLAYERS</option>
+            <option value="2">2 PLAYERS</option>
+          </select>
+        </div>
+        <div class="mp-field mp-size-hidden">
+          <label>TEAM SIZE</label>
+          <select id="mp-create-team-size" class="mp-select">
+            <option value="4">4 PER TEAM</option>
+            <option value="3">3 PER TEAM</option>
+            <option value="2">2 PER TEAM</option>
+            <option value="1">1 PER TEAM</option>
+          </select>
+        </div>
+        <div class="mp-field">
+          <label>PERSPECTIVE</label>
+          <select id="mp-create-perspective" class="mp-select">
+            <option value="fpp">FIRST PERSON</option>
+            <option value="tpp">THIRD PERSON</option>
+          </select>
+        </div>
+        <div class="mp-field">
+          <label>WEATHER</label>
+          <select id="mp-create-weather" class="mp-select">
+            <option value="clear">CLEAR</option>
+            <option value="overcast">OVERCAST</option>
+            <option value="night">NIGHT</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="mp-card mp-create-section">
+      <div class="mp-section-kicker">RULES</div>
+      <h3>ROOM RULES</h3>
+      <div class="mp-toggle-list">
+        <label class="mp-toggle-row"><span><b>FRIENDLY FIRE</b><small>Team members cannot damage each other when disabled.</small></span><input id="mp-create-friendly-fire" type="checkbox"></label>
+        <label class="mp-toggle-row"><span><b>ALLOW SPECTATORS</b><small>Allow spectators to watch after the match begins.</small></span><input id="mp-create-spectators" type="checkbox"></label>
+        <label class="mp-toggle-row"><span><b>ALLOW JOIN IN PROGRESS</b><small>Players may enter while the room is already live.</small></span><input id="mp-create-join-progress" type="checkbox"></label>
+      </div>
+    </div>
+
+    <div class="mp-card mp-create-section">
+      <div class="mp-section-kicker">START</div>
+      <h3>START CONDITIONS</h3>
+      <div class="mp-form-grid">
+        <div class="mp-field">
+          <label>MINIMUM PLAYERS</label>
+          <select id="mp-create-min-players" class="mp-select">
+            <option value="2">2 PLAYERS</option>
+            <option value="4">4 PLAYERS</option>
+            <option value="6">6 PLAYERS</option>
+            <option value="8">8 PLAYERS</option>
+          </select>
+        </div>
+        <div class="mp-field">
+          <label>TEAM BALANCE</label>
+          <select id="mp-create-team-balance" class="mp-select">
+            <option value="auto">AUTO BALANCE</option>
+            <option value="host">HOST CONTROLS TEAMS</option>
+          </select>
+        </div>
+      </div>
+      <div class="mp-create-note">The room creator becomes HOST. The HOST controls the room and starts the match for everyone.</div>
+    </div>
+  </div>
+
+  <div class="mp-create-actions">
+    <button class="mp-btn primary mp-create-confirm-large" id="mp-create-confirm">CREATE ROOM</button>
+  </div>
+</div>
+
+<div id="mp-room-page">
+            <div class="mp-room-head">
+              <div><small>ROOM ID</small><div class="mp-room-id" id="mp-room-code">------</div></div>
+              <div style="text-align:right"><small>ROOM HOST</small><div id="mp-room-host-name" style="font:900 13px Inter;color:#ffd447">—</div></div>
+            </div>
+            <div class="mp-room-layout">
+              <div class="mp-room-info">
+                <h3>ROOM SETTINGS</h3>
+                <div class="mp-info-line"><span>MAP</span><span id="mp-room-map">ATLAS RANGE</span></div>
+                <div class="mp-info-line"><span>MODE</span><span id="mp-room-mode">4V4</span></div>
+                <div class="mp-info-line"><span>PLAYERS</span><span id="mp-room-count">1 / —</span></div>
+                <div class="mp-info-line"><span>YOUR TEAM</span><span id="mp-my-team">BLUE</span></div>
+                <div id="mp-host-controls" style="margin-top:12px">
+                  <h3 style="margin-top:16px">HOST CONTROLS</h3>
+                  <select id="mp-room-map-select" class="mp-select"><option value="atlas">ATLAS RANGE</option><option value="neo">NEO-RIFT</option></select>
+                  <select id="mp-room-mode-select" class="mp-select" style="margin-top:7px"><option value="range">TACTICAL RANGE</option><option value="deathmatch">DEATHMATCH</option><option value="survival">SURVIVAL</option></select>
+                  <input id="mp-room-password" class="mp-input" type="password" maxlength="20" placeholder="ROOM PASSWORD (OPTIONAL)" style="margin-top:7px">
+                </div>
               </div>
-              <div class="mp-card">
-                <h3>JOIN ROOM</h3>
-                <p>Enter a room code created by another player.</p>
-                <input id="mp-name-join" class="mp-input" maxlength="16" placeholder="PLAYER NAME">
-                <input id="mp-room-input" class="mp-input" maxlength="6" style="margin-top:7px" placeholder="ROOM CODE">
-                <div class="mp-actions"><button class="mp-btn primary" id="mp-join">JOIN ROOM</button><button class="mp-btn" id="mp-leave">LEAVE ROOM</button></div>
+              <div class="mp-team-card">
+                <h3>TEAM FORMATION</h3>
+                <p style="margin:0 0 9px;color:#728481;font:600 8px Inter">HOST can move players between RED and BLUE. Multiplayer never adds bots.</p>
+                <div class="mp-teams"><div class="mp-team blue"><h4>BLUE <span id="mp-blue-count">0</span>/4</h4><div id="mp-blue-team"></div></div><div class="mp-team red"><h4>RED <span id="mp-red-count">0</span>/4</h4><div id="mp-red-team"></div></div></div>
               </div>
             </div>
-            <div id="mp-status">MULTIPLAYER OFFLINE — choose CREATE ROOM or JOIN ROOM.</div>
-            <div class="mp-card" style="margin-top:10px;max-width:720px">
-              <h3>ROOM <span id="mp-room-code">------</span></h3>
-              <p>Players in this room</p>
-              <div id="mp-player-list"></div>
-            </div>
+            <div class="mp-room-footer"><button class="mp-btn" id="mp-room-back">BACK TO ROOMS</button><button class="mp-btn" id="mp-leave">LEAVE ROOM</button></div>
+            <button class="mp-btn gold mp-room-start" id="mp-room-start">START MATCH</button>
           </div>
         </section>
 
+        <section class="panel" id="profile-panel">
+          <div class="profile-card">
+            <div class="kicker">PLAYER IDENTITY</div><h2>PROFILE</h2>
+            <p class="panel-sub">Change the name shown when you create or join a multiplayer room.</p>
+            <label style="display:block;margin-top:12px;color:#81918f;font:800 8px Inter;letter-spacing:1.5px">PLAYER NAME</label>
+            <div class="profile-name-save"><input id="profile-name" class="mp-input" maxlength="16" placeholder="PLAYER NAME"><button id="profile-save" class="mp-btn primary">SAVE</button></div>
+            <div id="profile-status" class="profile-note">Your profile name is saved on this device.</div>
+          </div>
+        </section>
         <section class="panel" id="loadout-panel">
           <div><h2>SELECT LOADOUT</h2><p class="panel-sub">Weapon handling and damage are applied in simulation.</p>
             <div class="choice-grid" id="weapon-choices">
@@ -627,12 +1358,14 @@ body::before{
           </div>
         </section>
       </main>
-      <footer class="lobby-foot"><span>WASD + MOUSE / MOBILE DUAL TOUCH</span><button class="start-btn deploy" id="start">DEPLOY AGENT</button></footer>
     </div>
   </div>
 
+  <div id="mp-start-countdown"><div class="mp-count-card"><small>HOST DEPLOYED // SYNCHRONIZING SQUADS</small><div class="mp-count-number" id="mp-count-number">5</div><div class="mp-count-copy">MATCH STARTING ON ALL CONNECTED DEVICES</div></div></div>
+
   <div id="settings">
     <div class="settings-panel">
+      <button class="settings-back" id="settings-back">BACK</button>
       <div class="kicker">SYSTEM CONFIGURATION</div><h2>SETTINGS</h2>
       <label class="setting"><span>MASTER VOLUME</span><input id="volume" type="range" min="0" max="1" value="0.7" step="0.01"></label>
       <label class="setting"><span>AMBIENT VOLUME</span><input id="ambience" type="range" min="0" max="0.08" value="0.025" step="0.005"></label>
@@ -672,91 +1405,353 @@ const RIFT_FIREBASE_CONFIG={
   appId:"1:491402378341:web:8c4dbf7b506093b12a9a8c",
   measurementId:"G-8WNQNFK63S"
 };
-let riftFirebaseApp=null,riftAuth=null,riftDB=null,riftUser=null,riftRoomId=null,riftIsHost=false,riftOnline=false;
+let riftFirebaseApp=null,riftAuth=null,riftDB=null,riftUser=null,riftRoomId=null,riftIsHost=false,riftOnline=false,riftMyTeam="blue";
 let riftPlayerRef=null,riftPlayersRef=null,riftMatchRef=null,riftEventsRef=null,riftSyncTimer=null,riftHeartbeatTimer=null;
 const riftRemotePlayers=new Map();
+window.riftOnline=false;window.riftIsHost=false;
 
 function mpStatus(t,k=""){const e=document.getElementById("mp-status");if(e){e.textContent=t;e.className=k;}}
 function mpName(v){return (v||"AGENT").trim().replace(/[^\w\- ]/g,"").slice(0,16)||"AGENT";}
 function mpCode(){return Array.from({length:6},()=>Math.random().toString(36)[2]).join("").toUpperCase();}
+function mpClearError(){
+  const box=document.getElementById("mp-error-box");
+  if(box) box.classList.remove("show");
+  const out=document.getElementById("mp-error-text");
+  if(out) out.textContent="";
+}
+function mpShowError(error, context="MULTIPLAYER"){
+  const e=error||{};
+  const code=e.code?` [${e.code}]`:"";
+  const message=e.message||String(e)||"Unknown error";
+  const full=`${context}${code}: ${message}`;
+  console.error("[RIFT//PROTOCOL]",full,e);
+  const box=document.getElementById("mp-error-box");
+  const out=document.getElementById("mp-error-text");
+  if(out) out.textContent=full;
+  if(box) box.classList.add("show");
+  mpStatus("MULTIPLAYER ERROR — SEE ERROR DETAILS BELOW","err");
+}
 async function mpInit(){
-  if(!window.riftGameConfig) throw Error('Game configuration is not initialized. Please reload the page.');
-  if(!riftFirebaseApp)riftFirebaseApp=firebase.initializeApp(RIFT_FIREBASE_CONFIG);
-  riftAuth=firebase.auth();riftDB=firebase.database();
-  if(!riftAuth.currentUser)await riftAuth.signInAnonymously();
-  riftUser=riftAuth.currentUser;
-  mpStatus("FIREBASE CONNECTED — anonymous player identity ready","ok");
+  try{
+    mpClearError();
+    if(!window.firebase) throw new Error("Firebase SDK did not load. Check your internet connection or CDN access.");
+    if(!riftFirebaseApp) riftFirebaseApp=firebase.initializeApp(RIFT_FIREBASE_CONFIG);
+    riftAuth=firebase.auth();
+    riftDB=firebase.database();
+    if(!riftAuth.currentUser) await riftAuth.signInAnonymously();
+    riftUser=riftAuth.currentUser;
+    if(!riftUser) throw new Error("Firebase authentication completed without a user.");
+    mpStatus("FIREBASE CONNECTED — anonymous player identity ready","ok");
+    return true;
+  }catch(e){
+    mpShowError(e,"FIREBASE INITIALIZATION");
+    throw e;
+  }
 }
+
+function mpSyncMatchSize(){
+  const sizeEl=document.getElementById("mp-create-size");
+  const maxEl=document.getElementById("mp-create-max-players");
+  const teamEl=document.getElementById("mp-create-team-size");
+  if(!sizeEl||!maxEl||!teamEl)return;
+  const n=Math.min(4,Math.max(1,Number(sizeEl.value||4)));
+  maxEl.value=String(n*2);
+  teamEl.value=String(n);
+  const minEl=document.getElementById("mp-create-min-players");
+  if(minEl && Number(minEl.value)>n*2) minEl.value=String(n*2);
+}
+document.getElementById("mp-create-size")?.addEventListener("change",mpSyncMatchSize);
+
+let mpCreateBusy=false;
 async function mpCreateRoom(){
-  await mpInit();const name=mpName(document.getElementById("mp-name-create").value);
-  let room,snap,n=0;do{room=mpCode();snap=await riftDB.ref("rooms/"+room).once("value");n++;}while(snap.exists()&&n<8);
-  if(snap.exists())throw Error("Could not allocate a room.");
-  await mpEnterRoom(room,name,true);
+  if(mpCreateBusy) return;
+  mpCreateBusy=true;
+  await mpInit();
+  mpClearError();
+  const name=mpName(document.getElementById("mp-create-name")?.value||localStorage.getItem("riftProfileName")||"AGENT");
+  const roomName=(document.getElementById("mp-create-room-name")?.value||`${name}'s Room`).trim().slice(0,28);
+  const roomPassword=(document.getElementById("mp-create-password")?.value||"").trim();
+  const visibility=document.getElementById("mp-create-visibility")?.value||"public";
+  const map=document.getElementById("mp-create-map")?.value||"atlas";
+  const mode=document.getElementById("mp-create-mode")?.value||"range";
+  const matchSize=Math.min(4,Math.max(1,Number(document.getElementById("mp-create-size")?.value||4)));
+  const maxPlayers=matchSize*2;
+  const teamSize=matchSize;
+  const minPlayers=Math.min(maxPlayers,Math.max(2,Number(document.getElementById("mp-create-min-players")?.value||2)));
+  const perspective=document.getElementById("mp-create-perspective")?.value||"fpp";
+  const weather=document.getElementById("mp-create-weather")?.value||"clear";
+  const friendlyFire=!!document.getElementById("mp-create-friendly-fire")?.checked;
+  const spectators=!!document.getElementById("mp-create-spectators")?.checked;
+  const joinInProgress=!!document.getElementById("mp-create-join-progress")?.checked;
+  const teamBalance=document.getElementById("mp-create-team-balance")?.value||"auto";
+  if(visibility==="private"&&!roomPassword) throw Error("PRIVATE ROOM REQUIRES A PASSWORD.");
+  if(teamSize*2>maxPlayers) throw Error("TEAM SIZE IS TOO LARGE FOR THE SELECTED PLAYER LIMIT.");
+
+  let room=null,snap=null,n=0;
+  do{
+    room=mpCode();
+    snap=await riftDB.ref("rooms/"+room).once("value");
+    n++;
+  }while(snap.exists()&&n<12);
+  if(snap && snap.exists())throw Error("Could not allocate a unique room ID.");
+
+  window.__riftCreateSettings={
+    roomName,roomPassword,visibility,map,mode,matchSize,maxPlayers,teamSize,minPlayers,
+    perspective,weather,friendlyFire,spectators,joinInProgress,teamBalance
+  };
+
+  try{
+    await mpEnterRoom(room,name,true);
+    mpStatus("ROOM CREATED — WAITING FOR PLAYERS","ok");
+  }catch(e){
+    // Do not leave a half-created lobby behind when a Firebase write/auth/network step fails.
+    try{ if(room && riftDB) await riftDB.ref("rooms/"+room).remove(); }catch(cleanupError){ console.warn("Room cleanup failed",cleanupError); }
+    if(riftRoomId===room) await mpLeaveRoom(false).catch(()=>{});
+    throw e;
+  }
 }
-async function mpJoinRoom(){
-  await mpInit();const room=(document.getElementById("mp-room-input").value||"").trim().toUpperCase();
-  if(!/^[A-Z0-9]{6}$/.test(room)){mpStatus("ENTER A VALID 6-CHARACTER ROOM CODE.","err");return;}
+async function mpJoinRoom(roomOverride="",passwordOverride=""){
+  await mpInit();const room=(roomOverride||document.getElementById("mp-search")?.value||"").trim().toUpperCase();
+  if(!/^[A-Z0-9]{6}$/.test(room)){mpStatus("ENTER A VALID 6-CHARACTER ROOM ID.","err");return;}
   const snap=await riftDB.ref("rooms/"+room).once("value");if(!snap.exists()){mpStatus("ROOM NOT FOUND.","err");return;}
-  const d=snap.val()||{},count=Object.keys(d.players||{}).length;if(count>=8){mpStatus("ROOM IS FULL (8 PLAYERS).","err");return;}
-  await mpEnterRoom(room,mpName(document.getElementById("mp-name-join").value),false);
+  const d=snap.val()||{},count=Object.keys(d.players||{}).length;
+  const maxPlayers=Number(d.meta?.maxPlayers||8);
+  if(count>=maxPlayers){mpStatus(`ROOM IS FULL (${maxPlayers} PLAYERS).`,"err");return;}
+  if(d.meta?.status==="live"&&!d.meta?.joinInProgress){mpStatus("MATCH ALREADY STARTED — JOIN IN PROGRESS IS DISABLED.","err");return;}
+  const password=d.meta?.password||"";let pass=passwordOverride;
+  if(password&&pass!==password){pass=prompt("ROOM PASSWORD");if(pass===null)return;}
+  if(password&&pass!==password){mpStatus("WRONG ROOM PASSWORD.","err");return;}
+  await mpEnterRoom(room,mpName(localStorage.getItem("riftProfileName")||"AGENT"),false);
 }
 async function mpEnterRoom(room,name,isHost){
   if(riftRoomId)await mpLeaveRoom(false);
-  riftRoomId=room;riftIsHost=isHost;
+  if(window.riftBridge?.scene)clearBots?.();
+  riftRoomId=room;riftIsHost=isHost;window.__riftMatchStarted=false;window.riftOnline=riftOnline;window.riftIsHost=riftIsHost;
   const base=riftDB.ref("rooms/"+room);
   riftPlayerRef=base.child("players/"+riftUser.uid);riftPlayersRef=base.child("players");riftMatchRef=base.child("match");riftEventsRef=base.child("events");
-  if(isHost)await base.child("meta").set({host:riftUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP,maxPlayers:8,status:"lobby",mode:window.riftGameConfig.mode,map:window.riftGameConfig.map});
+  if(isHost){
+    const roomPassword=(document.getElementById("mp-create-password")?.value||document.getElementById("mp-room-password")?.value||"").trim();
+    const roomMap=document.getElementById("mp-create-map")?.value||document.getElementById("mp-room-map-select")?.value||window.riftGameConfig.map;
+    const roomMode=document.getElementById("mp-create-mode")?.value||document.getElementById("mp-room-mode-select")?.value||window.riftGameConfig.mode;
+    window.riftGameConfig.map=roomMap;window.riftGameConfig.mode=roomMode;
+    const cs=window.__riftCreateSettings||{};
+    await base.child("meta").set({
+      host:riftUser.uid,hostName:name,roomName:cs.roomName||`${name}'s Room`,
+      createdAt:firebase.database.ServerValue.TIMESTAMP,
+      maxPlayers:Number(cs.maxPlayers||8),teamSize:Number(cs.teamSize||4),matchSize:Number(cs.matchSize||4),minPlayers:Number(cs.minPlayers||2),
+      status:"lobby",mode:roomMode,map:roomMap,password:roomPassword,
+      visibility:cs.visibility||"public",perspective:cs.perspective||"fpp",weather:cs.weather||"clear",
+      friendlyFire:!!cs.friendlyFire,spectators:!!cs.spectators,joinInProgress:!!cs.joinInProgress,
+      teamBalance:cs.teamBalance||"auto"
+    });
+    base.child("meta").onDisconnect().update({status:"closed",closedAt:firebase.database.ServerValue.TIMESTAMP});
+  }
+  const meta=(await base.child("meta").once("value")).val()||{};
+  if(!isHost && meta.status!=="lobby"){throw Error("ROOM IS NO LONGER OPEN.");}
   const ps=(await base.child("players").once("value")).val()||{};
-  const red=Object.values(ps).filter(p=>p.team==="red").length,blue=Object.values(ps).filter(p=>p.team==="blue").length;
-  const team=red<=blue?"red":"blue";
+  const maxPlayers=Number(meta.maxPlayers||8),teamSize=Number(meta.teamSize||4);
+  const currentPlayers=Object.values(ps);
+  if(currentPlayers.length>=maxPlayers) throw Error(`ROOM IS FULL (${maxPlayers} PLAYERS).`);
+  const red=currentPlayers.filter(p=>p.team==="red").length,blue=currentPlayers.filter(p=>p.team==="blue").length;
+  let team;
+  if(red<teamSize && blue<teamSize) team=red<=blue?"red":"blue";
+  else if(red<teamSize) team="red";
+  else if(blue<teamSize) team="blue";
+  else throw Error("BOTH TEAMS ARE FULL.");
   await riftPlayerRef.set({uid:riftUser.uid,name,team,ready:false,x:0,y:1.7,z:24,yaw:0,pitch:0,health:200,alive:true,weapon:window.riftGameConfig.weapon,updatedAt:firebase.database.ServerValue.TIMESTAMP});
-  riftPlayerRef.onDisconnect().remove();riftOnline=true;
+  riftPlayerRef.onDisconnect().remove();riftOnline=true;window.riftOnline=true;window.riftIsHost=riftIsHost;
   document.getElementById("mp-room-code").textContent=room;document.getElementById("mp-hud-code").textContent=room;document.getElementById("mp-hud").style.display="block";
-  mpStatus((isHost?"ROOM CREATED":"JOINED ROOM")+" — CODE "+room,"ok");
-  riftPlayersRef.on("value",mpPlayersSnapshot);riftMatchRef.on("value",s=>{const m=s.val()||{};if(m.map)window.riftGameConfig.map=m.map;});
-  riftEventsRef.limitToLast(30).on("child_added",s=>{const e=s.val();if(e&&e.uid!==riftUser.uid&&e.type==="shot"&&typeof tracer==="function"){const a=new THREE.Vector3(e.x,e.y,e.z),d=new THREE.Vector3(e.dx,e.dy,e.dz);tracer(a.clone().addScaledVector(d,.5),a.clone().addScaledVector(d,28),0xff4655);}});
+  document.getElementById("mp-room-host-name").textContent=meta.hostName||"UNKNOWN HOST";
+  document.getElementById("mp-room-map").textContent=(meta.map||window.riftGameConfig.map||"atlas").toUpperCase();document.getElementById("mp-room-mode").textContent=`${Number(meta.matchSize||meta.teamSize||4)}V${Number(meta.matchSize||meta.teamSize||4)} • ${(meta.mode||window.riftGameConfig.mode||"range").toUpperCase()}`;
+  document.getElementById("mp-host-controls").style.display=isHost?"block":"none";document.getElementById("mp-room-start").disabled=!isHost;document.getElementById("mp-room-start").textContent=isHost?"START MATCH":"WAITING FOR HOST…";document.getElementById("mp-room-start").classList.toggle("mp-deploy-wait",!isHost);
+  if(isHost){document.getElementById("mp-room-map-select").value=meta.map||"atlas";document.getElementById("mp-room-mode-select").value=meta.mode||"range";}
+  mpShowRoomPage();
+  mpStatus((isHost?"HOST ROOM CREATED":"JOINED ROOM")+" — CODE "+room,"ok");document.getElementById("start").style.display="none";
+  riftPlayersRef.on("value",mpPlayersSnapshot);
+  riftMatchRef.on("value",s=>{
+    const m=s.val()||{};
+    if(m.map)window.riftGameConfig.map=m.map;if(m.mode)window.riftGameConfig.mode=m.mode;
+    if(m.status==="live" && !window.__riftMatchStarted){
+      window.__riftMatchStarted=true;mpRunStartCountdown(()=>{window.riftBridge?.enterFullscreen?.();if(!window.riftBridge?.started)window.riftBridge?.startGame?.(true);});
+    }
+  });
+  riftEventsRef.limitToLast(30).on("child_added",s=>{const e=s.val();if(e&&e.uid!==riftUser.uid&&e.type==="shot"&&window.riftBridge?.tracer){const a=new THREE.Vector3(e.x,e.y,e.z),d=new THREE.Vector3(e.dx,e.dy,e.dz);window.riftBridge.tracer(a.clone().addScaledVector(d,.5),a.clone().addScaledVector(d,28),0xff4655);}});
   clearInterval(riftSyncTimer);riftSyncTimer=setInterval(mpPublishState,100);
   clearInterval(riftHeartbeatTimer);riftHeartbeatTimer=setInterval(()=>riftPlayerRef?.child("updatedAt").set(firebase.database.ServerValue.TIMESTAMP),3000);
+  mpRefreshOpenRooms();
 }
 function mpPlayersSnapshot(s){
   const players=s.val()||{},ids=new Set(Object.keys(players));
   Object.keys(players).forEach(id=>{if(id!==riftUser?.uid){if(!riftRemotePlayers.has(id))mpCreateRemote(id,players[id]);mpUpdateRemote(id,players[id]);}});
   [...riftRemotePlayers.keys()].forEach(id=>{if(!ids.has(id))mpRemoveRemote(id);});
-  document.getElementById("mp-hud-count").textContent=String(Math.max(1,Object.keys(players).length));
-  document.getElementById("mp-player-list").innerHTML=Object.values(players).map(p=>`<div class="mp-player"><span>${String(p.name||"AGENT").replace(/[<>&"]/g,"")}</span><span>${p.ready?"READY":"ONLINE"} • ${p.team==="red"?"RED":"BLUE"}</span></div>`).join("");
+  const list=Object.values(players),blue=list.filter(p=>p.team!=="red"),red=list.filter(p=>p.team==="red");
+  document.getElementById("mp-hud-count").textContent=String(Math.max(1,list.length));document.getElementById("mp-room-count").textContent=`${list.length} / 8`;
+  const me=players[riftUser?.uid];riftMyTeam=me?.team||"blue";document.getElementById("mp-my-team").textContent=riftMyTeam.toUpperCase();
+  document.getElementById("mp-blue-count").textContent=blue.length;document.getElementById("mp-red-count").textContent=red.length;
+  const esc=v=>String(v||"AGENT").replace(/[<>&"]/g,"");
+  const playerRow=(p)=>`<div class="mp-team-player ${p.uid===riftUser?.uid&&riftIsHost?'host':''}"><span>${esc(p.name)} ${p.uid===riftUser?.uid&&riftIsHost?'<b class="mp-host-tag">HOST</b>':''}</span><span>${riftIsHost&&p.uid!==riftUser?.uid?`<span class="mp-team-switch"><button data-team="blue" data-uid="${p.uid}">B</button><button data-team="red" data-uid="${p.uid}">R</button></span>`:`${p.ready?'READY':'ONLINE'}`}</span></div>`;
+  document.getElementById("mp-blue-team").innerHTML=blue.map(playerRow).join("")||'<div class="mp-empty">NO PLAYERS</div>';document.getElementById("mp-red-team").innerHTML=red.map(playerRow).join("")||'<div class="mp-empty">NO PLAYERS</div>';
+  document.querySelectorAll("[data-team][data-uid]").forEach(b=>b.onclick=()=>mpSetTeam(b.dataset.uid,b.dataset.team));
+  riftDB.ref("rooms/"+riftRoomId+"/meta").once("value").then(h=>{const meta=h.val()||{};document.getElementById("mp-room-host-name").textContent=meta.hostName||"UNKNOWN HOST";}).catch(()=>{});
+}
+async function mpSetTeam(uid,team){
+  if(!riftIsHost||!riftRoomId)return;
+  const snap=await riftDB.ref(`rooms/${riftRoomId}/players`).once("value");
+  const ps=snap.val()||{};
+  const meta=(await riftDB.ref(`rooms/${riftRoomId}/meta`).once("value")).val()||{};
+  const cap=Number(meta.teamSize||4);
+  const count=Object.values(ps).filter(p=>p.team===team).length;
+  if(count>=cap&&ps[uid]?.team!==team){mpStatus(`${team.toUpperCase()} TEAM IS FULL (${cap}/${cap}).`,"err");return;}
+  await riftDB.ref(`rooms/${riftRoomId}/players/${uid}/team`).set(team);
 }
 function mpCreateRemote(id,p){
-  if(typeof scene==="undefined"||!scene)return;
+  if(!window.riftBridge?.scene)return;
   const g=new THREE.Group(),c=p.team==="red"?0xff4655:0x55d9ff;
-  const m=new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.12,roughness:.45,metalness:.25});
-  const body=new THREE.Mesh(new THREE.CapsuleGeometry(.35,.85,4,8),m);body.position.y=.82;body.castShadow=true;g.add(body);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,8),m);head.position.y=1.48;g.add(head);
-  g.position.set(Number(p.x)||0,0,Number(p.z)||0);scene.add(g);
-  riftRemotePlayers.set(id,{group:g,target:new THREE.Vector3(g.position.x,0,g.position.z),yaw:0});
+  const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,1.05,5,10),new THREE.MeshStandardMaterial({color:c,roughness:.55}));body.position.y=.85;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,10),new THREE.MeshStandardMaterial({color:0xe7c4a4,roughness:.7}));head.position.y=1.55;g.add(head);
+  g.position.set(Number(p.x)||0,0,Number(p.z)||0);window.riftBridge.scene.add(g);
+  riftRemotePlayers.set(id,{group:g,body,target:new THREE.Vector3(g.position.x,0,g.position.z),yaw:0});
 }
-function mpUpdateRemote(id,p){const r=riftRemotePlayers.get(id);if(!r)return;r.target.set(Number(p.x)||0,0,Number(p.z)||0);r.yaw=Number(p.yaw)||0;r.group.visible=p.alive!==false;}
-function mpRemoveRemote(id){const r=riftRemotePlayers.get(id);if(!r)return;scene.remove(r.group);riftRemotePlayers.delete(id);}
+function mpUpdateRemote(id,p){const r=riftRemotePlayers.get(id);if(!r)return;r.target.set(Number(p.x)||0,0,Number(p.z)||0);r.yaw=Number(p.yaw)||0;r.group.visible=p.alive!==false;const c=p.team==="red"?0xff4655:0x55d9ff;r.body?.material&&(r.body.material.color.setHex(c));}
+function mpRemoveRemote(id){const r=riftRemotePlayers.get(id);if(!r)return;window.riftBridge?.scene?.remove(r.group);riftRemotePlayers.delete(id);}
 function mpAnimateRemotes(dt){riftRemotePlayers.forEach(r=>{r.group.position.lerp(r.target,Math.min(1,dt*14));r.group.rotation.y=THREE.MathUtils.damp(r.group.rotation.y,r.yaw,14,dt);});}
 function mpPublishState(){
-  if(!riftOnline||!riftPlayerRef||typeof camera==="undefined")return;
-  riftPlayerRef.update({x:+camera.position.x.toFixed(3),y:+camera.position.y.toFixed(3),z:+camera.position.z.toFixed(3),yaw:+yaw.toFixed(4),pitch:+pitch.toFixed(4),health:Math.ceil(health),alive:!!playerAlive,weapon:window.riftGameConfig.weapon,updatedAt:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{});
+  const b=window.riftBridge;if(!riftOnline||!riftPlayerRef||!b?.camera)return;
+  riftPlayerRef.update({x:+b.camera.position.x.toFixed(3),y:+b.camera.position.y.toFixed(3),z:+b.camera.position.z.toFixed(3),yaw:+b.yaw.toFixed(4),pitch:+b.pitch.toFixed(4),health:Math.ceil(b.health),alive:!!b.playerAlive,weapon:window.riftGameConfig.weapon,updatedAt:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{});
 }
 function mpPublishShot(){
-  if(!riftOnline||!riftEventsRef||typeof camera==="undefined")return;
-  const d=new THREE.Vector3();camera.getWorldDirection(d);
-  riftEventsRef.push({type:"shot",uid:riftUser.uid,x:camera.position.x,y:camera.position.y,z:camera.position.z,dx:d.x,dy:d.y,dz:d.z,weapon:window.riftGameConfig.weapon,t:firebase.database.ServerValue.TIMESTAMP});
+  const b=window.riftBridge;if(!riftOnline||!riftEventsRef||!b?.camera)return;
+  const d=new THREE.Vector3();b.camera.getWorldDirection(d);
+  riftEventsRef.push({type:"shot",uid:riftUser.uid,x:b.camera.position.x,y:b.camera.position.y,z:b.camera.position.z,dx:d.x,dy:d.y,dz:d.z,weapon:window.riftGameConfig.weapon,t:firebase.database.ServerValue.TIMESTAMP});
 }
 async function mpStartMatch(){if(riftOnline&&riftIsHost&&riftMatchRef)await riftMatchRef.set({status:"live",startedAt:firebase.database.ServerValue.TIMESTAMP,mode:window.riftGameConfig.mode,map:window.riftGameConfig.map,round:1});}
-async function mpLeaveRoom(clear=true){
-  try{if(riftPlayersRef)riftPlayersRef.off();if(riftMatchRef)riftMatchRef.off();if(riftEventsRef)riftEventsRef.off();if(riftPlayerRef)await riftPlayerRef.remove();}catch(e){}
-  clearInterval(riftSyncTimer);clearInterval(riftHeartbeatTimer);[...riftRemotePlayers.keys()].forEach(mpRemoveRemote);
-  riftOnline=false;riftRoomId=null;riftIsHost=false;riftPlayerRef=riftPlayersRef=riftMatchRef=riftEventsRef=null;
-  if(clear){document.getElementById("mp-room-code").textContent="------";document.getElementById("mp-hud").style.display="none";mpStatus("MULTIPLAYER OFFLINE — choose CREATE ROOM or JOIN ROOM.");}
+async function mpRefreshOpenRooms(filter=""){
+  if(!riftDB)return;const ref=riftDB.ref("rooms");ref.off("value",window.__riftOpenRoomsListener);
+  const listener=s=>{const q=(filter||"").trim().toUpperCase(),rooms=s.val()||{};const rows=Object.entries(rooms).filter(([,r])=>(r.meta?.status||"closed")==="lobby").map(([code,r])=>({code,host:r.meta?.hostName||"UNKNOWN HOST",count:Object.keys(r.players||{}).length,map:r.meta?.map||"atlas",password:!!r.meta?.password})).filter(r=>!q||r.code.includes(q)||r.host.toUpperCase().includes(q));
+    const el=document.getElementById("mp-open-rooms");if(!el)return;el.innerHTML=rows.length?rows.map(r=>`<div class="mp-open-row"><div class="mp-open-meta"><span class="mp-open-code">${r.code} ${r.password?'🔒':''}</span><span class="mp-open-host">HOST: ${String(r.host).replace(/[<>&"]/g,"")}</span><span class="mp-open-map">${r.map}</span></div><span class="mp-open-count">${r.count}/8</span><button class="mp-btn primary" data-open-join="${r.code}">JOIN</button></div>`).join(""):"<div class='mp-empty'>NO AVAILABLE ROOMS</div>";
+    el.querySelectorAll("[data-open-join]").forEach(btn=>btn.onclick=async()=>{const room=btn.dataset.openJoin;try{await mpJoinRoom(room);}catch(e){mpStatus("JOIN FAILED: "+e.message,"err");}});
+  };
+  window.__riftOpenRoomsListener=listener;
+  ref.on("value",listener,(error)=>mpShowError(error,"OPEN ROOMS"));
+
 }
-document.getElementById("mp-create")?.addEventListener("click",async()=>{const b=document.getElementById("mp-create");b.disabled=true;try{await mpCreateRoom();}catch(e){console.error(e);mpStatus("CREATE ROOM FAILED: "+e.message,"err");}b.disabled=false;});
-document.getElementById("mp-join")?.addEventListener("click",async()=>{const b=document.getElementById("mp-join");b.disabled=true;try{await mpJoinRoom();}catch(e){console.error(e);mpStatus("JOIN ROOM FAILED: "+e.message,"err");}b.disabled=false;});
-document.getElementById("mp-room-input")?.addEventListener("input",e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""));
+function mpShowRoomPage(){
+  const home=document.getElementById("mp-home-view");
+  const create=document.getElementById("mp-create-page");
+  const roomPage=document.getElementById("mp-room-page");
+  if(home){ home.style.display="none"; home.hidden=true; }
+  if(create){ create.style.display="none"; create.hidden=true; }
+  if(roomPage){ roomPage.style.display="grid"; roomPage.hidden=false; }
+}
+function mpSetCreateMode(on){
+  document.body.classList.toggle("mp-create-mode",!!on);
+  const panel=document.getElementById("multiplayer-panel");
+  if(panel) panel.scrollTop=0;
+}
+function mpShowCreatePage(){
+  mpSetCreateMode(true);
+  const home=document.getElementById("mp-home-view");
+  const create=document.getElementById("mp-create-page");
+  const roomPage=document.getElementById("mp-room-page");
+  if(home){ home.style.display="none"; home.hidden=true; }
+  if(roomPage){ roomPage.style.display="none"; roomPage.hidden=true; }
+  if(create){ create.style.display="grid"; create.hidden=false; }
+  const name=localStorage.getItem("riftProfileName")||"AGENT";
+  document.getElementById("mp-create-name").value=name;
+  document.getElementById("mp-create-room-name").value=`${name}'s Room`;
+  document.getElementById("mp-create-visibility").value="public";
+  document.getElementById("mp-create-password").value="";
+  document.getElementById("mp-create-map").value="atlas";
+  document.getElementById("mp-create-mode").value="range";
+  const sizeEl=document.getElementById("mp-create-size"); if(sizeEl){ sizeEl.value="4"; mpSyncMatchSize?.(); }
+  document.getElementById("mp-create-max-players").value="8";
+  document.getElementById("mp-create-team-size").value="4";
+  document.getElementById("mp-create-min-players").value="2";
+  document.getElementById("mp-create-perspective").value="fpp";
+  document.getElementById("mp-create-weather").value="clear";
+  document.getElementById("mp-create-friendly-fire").checked=false;
+  document.getElementById("mp-create-spectators").checked=false;
+  document.getElementById("mp-create-join-progress").checked=false;
+  document.getElementById("mp-create-team-balance").value="auto";
+}
+function mpShowHomePage(){
+  mpSetCreateMode(false);
+  const home=document.getElementById("mp-home-view");
+  const create=document.getElementById("mp-create-page");
+  const roomPage=document.getElementById("mp-room-page");
+  if(roomPage){ roomPage.style.display="none"; roomPage.hidden=true; }
+  if(create){ create.style.display="none"; create.hidden=true; }
+  if(home){ home.style.display="grid"; home.hidden=false; }
+}
+function mpRunStartCountdown(done){const overlay=document.getElementById("mp-start-countdown"),num=document.getElementById("mp-count-number");overlay.style.display="grid";let n=5;num.textContent=n;const timer=setInterval(()=>{n--;if(n<=0){clearInterval(timer);num.textContent="GO";setTimeout(()=>{overlay.style.display="none";done?.();},420);}else num.textContent=n;},700);}
+async function mpUpdateRoomSettings(){if(!riftIsHost||!riftRoomId)return;const map=document.getElementById("mp-room-map-select").value,mode=document.getElementById("mp-room-mode-select").value,password=document.getElementById("mp-room-password").value.trim();window.riftGameConfig.map=map;window.riftGameConfig.mode=mode;await riftDB.ref(`rooms/${riftRoomId}/meta`).update({map,mode,password});document.getElementById("mp-room-map").textContent=map.toUpperCase();document.getElementById("mp-room-mode").textContent=`${Number((await riftDB.ref(`rooms/${riftRoomId}/meta/matchSize`).once("value")).val()||4)}V${Number((await riftDB.ref(`rooms/${riftRoomId}/meta/matchSize`).once("value")).val()||4)} • ${mode.toUpperCase()}`;}
+async function mpStartFromRoom(){if(!riftOnline||!riftIsHost||!riftMatchRef)return;await mpUpdateRoomSettings();window.__riftMatchStarted=false;await riftMatchRef.set({status:"live",startedAt:firebase.database.ServerValue.TIMESTAMP,mode:window.riftGameConfig.mode,map:window.riftGameConfig.map,round:1});}
+function mpApplyProfile(){const n=localStorage.getItem("riftProfileName")||"AGENT";document.getElementById("profile-name").value=n;document.getElementById("mp-search")?.setAttribute("placeholder","SEARCH ROOM ID / HOST");}
+async function mpLeaveRoom(clear=true){
+  try{
+    if(riftRoomId&&riftIsHost&&riftDB)await riftDB.ref("rooms/"+riftRoomId+"/meta").update({status:"closed",closedAt:firebase.database.ServerValue.TIMESTAMP});
+    if(riftPlayersRef)riftPlayersRef.off();if(riftMatchRef)riftMatchRef.off();if(riftEventsRef)riftEventsRef.off();if(riftPlayerRef)await riftPlayerRef.remove();
+  }catch(e){}
+  clearInterval(riftSyncTimer);clearInterval(riftHeartbeatTimer);[...riftRemotePlayers.keys()].forEach(mpRemoveRemote);
+  riftOnline=false;riftRoomId=null;riftIsHost=false;riftMyTeam="blue";window.riftOnline=false;window.riftIsHost=false;riftPlayerRef=riftPlayersRef=riftMatchRef=riftEventsRef=null;
+  document.getElementById("mp-hud").style.display="none";mpRefreshOpenRooms();mpShowHomePage();
+  if(clear){document.getElementById("mp-room-code").textContent="------";mpStatus("MULTIPLAYER READY — select a room or create one.","ok");}
+}
+document.getElementById("mp-create-bottom")?.addEventListener("click",()=>{
+  try{
+    mpClearError();
+    mpShowCreatePage();
+  }catch(e){
+    mpShowError(e,"OPEN CREATE ROOM");
+  }
+});
+document.getElementById("mp-create-back")?.addEventListener("click",()=>mpShowHomePage());
+
+document.getElementById("mp-create-visibility")?.addEventListener("change",e=>{
+  const p=document.getElementById("mp-create-password");
+  if(!p)return;
+  p.placeholder=e.target.value==="private"?"REQUIRED PASSWORD":"OPTIONAL";
+});
+document.getElementById("mp-create-max-players")?.addEventListener("change",e=>{
+  const max=Number(e.target.value||8), sel=document.getElementById("mp-create-min-players");
+  if(!sel)return;
+  [...sel.options].forEach(o=>o.disabled=Number(o.value)>max);
+  if(Number(sel.value)>max)sel.value=String(max);
+});
+
+document.getElementById("mp-create-confirm")?.addEventListener("click",async()=>{
+  const b=document.getElementById("mp-create-confirm");
+  if(!b)return;
+  b.disabled=true;
+  b.textContent="CREATING ROOM…";
+  mpClearError();
+  try{
+    await mpCreateRoom();
+  }catch(e){
+    mpShowError(e,"CREATE ROOM FAILED");
+  }finally{
+    mpCreateBusy=false;
+    b.disabled=false;
+    b.textContent="CREATE ROOM";
+  }
+});
+document.getElementById("mp-search")?.addEventListener("input",e=>mpRefreshOpenRooms(e.target.value));
+document.getElementById("mp-search-clear")?.addEventListener("click",()=>{document.getElementById("mp-search").value="";mpRefreshOpenRooms("");});
+document.getElementById("mp-room-back")?.addEventListener("click",()=>mpShowHomePage());
 document.getElementById("mp-leave")?.addEventListener("click",async()=>{await mpLeaveRoom(true);});
+document.getElementById("mp-room-start")?.addEventListener("click",async()=>{try{await mpStartFromRoom();}catch(e){mpStatus("START FAILED: "+e.message,"err");}});
+document.getElementById("mp-room-map-select")?.addEventListener("change",mpUpdateRoomSettings);document.getElementById("mp-room-mode-select")?.addEventListener("change",mpUpdateRoomSettings);document.getElementById("mp-room-password")?.addEventListener("change",mpUpdateRoomSettings);
+document.getElementById("profile-save")?.addEventListener("click",async()=>{const n=mpName(document.getElementById("profile-name").value);localStorage.setItem("riftProfileName",n);document.getElementById("profile-name").value=n;if(riftOnline&&riftPlayerRef)await riftPlayerRef.child("name").set(n);if(riftOnline&&riftIsHost&&riftRoomId)await riftDB.ref(`rooms/${riftRoomId}/meta/hostName`).set(n);document.getElementById("profile-status").textContent=`Saved as ${n}. New rooms will use this name.`;document.getElementById("mp-status").textContent=`PROFILE SAVED — ${n}`;document.getElementById("mp-status").className="ok";});
+document.getElementById("settings-back")?.addEventListener("click",()=>document.getElementById("settings").classList.remove("open"));
+// Firebase/Open Rooms initialization is started after the game engine has created
+// window.riftGameConfig and window.riftBridge. Starting it earlier caused the
+// multiplayer tab to remain stuck on "MULTIPLAYER OFFLINE".
+function mpBoot(){
+  mpInit().then(mpRefreshOpenRooms).catch(err=>{
+    console.error("RIFT multiplayer boot failed",err);
+    mpStatus("FIREBASE OFFLINE — CHECK AUTH / DATABASE CONFIGURATION.","err");
+  });
+}
 
 
     (() => {
@@ -900,7 +1895,6 @@ document.getElementById("mp-leave")?.addEventListener("click",async()=>{await mp
 
         buildMap();
         buildPlayer();
-        createBots();
         bindControls();
         window.addEventListener('resize', resize);
         animate();
@@ -1069,7 +2063,10 @@ document.getElementById("mp-leave")?.addEventListener("click",async()=>{await mp
         bots.push(bot);
       }
 
+      function clearBots(){bots.splice(0).forEach(b=>{scene.remove(b.group);});}
+
       function createBots() {
+        if(window.riftOnline) return;
         [new THREE.Vector3(S(-2),0,S(22)),new THREE.Vector3(0,0,S(23)),new THREE.Vector3(S(2),0,S(22))].forEach(p=>createBot(p,'blue'));
         [new THREE.Vector3(S(-3),0,S(-23)),new THREE.Vector3(S(-1),0,S(-24)),new THREE.Vector3(S(1),0,S(-24)),new THREE.Vector3(S(3),0,S(-23))].forEach(p=>createBot(p,'red'));
         updateTeamStatus();
@@ -1420,7 +2417,7 @@ document.getElementById("mp-leave")?.addEventListener("click",async()=>{await mp
         states.forEach((alive,i)=>{const d=document.createElement('i');d.className=`unit-dot ${i>3?'red':''} ${alive?'':'dead'}`;root.appendChild(d);});
       }
       function checkRoundEnd(){
-        if(roundFrozen)return;const blue=(playerAlive?1:0)+bots.filter(b=>b.team==='blue'&&b.alive).length,red=bots.filter(b=>b.team==='red'&&b.alive).length;
+        if(roundFrozen)return;if(window.riftOnline)return;const blue=(playerAlive?1:0)+bots.filter(b=>b.team==='blue'&&b.alive).length,red=bots.filter(b=>b.team==='red'&&b.alive).length;
         if(!red)finishRound('blue','ENEMY TEAM ELIMINATED');else if(!blue&&bombState!=='planted')finishRound('red','SQUAD ELIMINATED');
       }
       function finishRound(winner,reason){
@@ -1431,7 +2428,8 @@ document.getElementById("mp-leave")?.addEventListener("click",async()=>{await mp
       }
       function beginRound(){
         roundFrozen=true;playerAlive=true;health=shield=200;verticalVelocity=0;onGround=true;crouching=false;knifeOut=false;weapon.visible=true;remainingTime=105;smokesLeft=2;ammo=WEAPONS[config.weapon].ammo;bombState='carried';plantProgress=defuseProgress=0;cancelSmokeAim();teamIntel={blue:null,red:null};if(bombMesh){scene.remove(bombMesh);bombMesh.geometry.dispose();bombMesh.material.dispose();bombMesh=null;}
-        camera.position.set(0,playerHeight,S(24));yaw=0;pitch=0;velocity.set(0,0,0);smokes.splice(0).forEach(s=>scene.remove(s.obj));
+        const mySpawn=window.riftOnline&&riftMyTeam==="red"?new THREE.Vector3(0,playerHeight,S(-24)):new THREE.Vector3(0,playerHeight,S(24));camera.position.copy(mySpawn);yaw=riftMyTeam==="red"?Math.PI:0;pitch=0;velocity.set(0,0,0);smokes.splice(0).forEach(s=>scene.remove(s.obj));
+        if(!window.riftOnline && !bots.length) createBots();
         const blueSpawns=[[-2,22],[0,23],[2,22]],redSpawns=[[-3,-23],[-1,-24],[1,-24],[3,-23]];
         let bi=0,ri=0;bots.forEach(b=>{const p=b.team==='blue'?blueSpawns[bi++]:redSpawns[ri++];b.spawn.set(S(p[0]),0,S(p[1]));b.group.position.copy(b.spawn);b.group.rotation.z=0;b.group.scale.y=1;b.alive=true;b.health=100;b.crouch=false;b.state='patrol';b.target.copy(b.spawn);});
         ammoEl.textContent=ammo;document.getElementById('smoke-count').textContent='x2';updateStats();updateTeamStatus();document.getElementById('round-label').textContent=`ROUND ${roundNumber} // 4V4 ELIMINATION`;document.getElementById('phase-label').textContent='BUY PHASE';document.getElementById('objective').textContent='PURCHASE LOADOUT';
@@ -1507,7 +2505,6 @@ document.getElementById("mp-leave")?.addEventListener("click",async()=>{await mp
         }
         started=true;proPaused=false;document.getElementById('pause-overlay').classList.remove('open');document.getElementById('pro-pause').textContent='Ⅱ';proSyncUI();document.getElementById('start-screen').style.display='none';document.getElementById('game-over').style.display='none';hud.hidden=false;controls.hidden=false;clock.getDelta();
         beginRound();
-        if(typeof mpStartMatch==='function'&&riftOnline&&riftIsHost)mpStartMatch().catch(()=>{});
         // Pointer lock begins when the buy phase closes.
       }
 
@@ -1518,11 +2515,32 @@ document.getElementById("mp-leave")?.addEventListener("click",async()=>{await mp
         renderer.render(scene,camera);
       }
 
-      document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));tab.classList.add('active');document.getElementById(`${tab.dataset.tab}-panel`).classList.add('active');}));
+      document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));tab.classList.add('active');const panel=document.getElementById(`${tab.dataset.tab}-panel`);panel?.classList.add('active');if(tab.dataset.tab==='multiplayer'&&!riftRoomId)mpShowHomePage();if(tab.dataset.tab==='profile')mpApplyProfile();document.getElementById('start').style.display=tab.dataset.tab==='play'?'':'none';}));
       function bindChoices(id,key){document.querySelectorAll(`#${id} .choice`).forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll(`#${id} .choice`).forEach(x=>x.classList.remove('active'));btn.classList.add('active');config[key]=btn.dataset.value;proPersistConfig();sfx('ready');}));}
       bindChoices('mode-choices','mode');bindChoices('map-choices','map');bindChoices('weapon-choices','weapon');
       addEventListener('pointerdown',initAudio,{once:true});
-      const settings=document.getElementById('settings');document.getElementById('open-settings').addEventListener('click',()=>settings.classList.add('open'));document.getElementById('close-settings').addEventListener('click',()=>settings.classList.remove('open'));
+      // Public engine bridge: multiplayer code stays outside this private game scope.
+      window.riftBridge={
+        get camera(){return camera;},
+        get scene(){return scene;},
+        get health(){return health;},
+        get yaw(){return yaw;},
+        get pitch(){return pitch;},
+        get playerAlive(){return playerAlive;},
+        get started(){return started;},
+        startGame:(reset)=>startGame(reset),
+        enterFullscreen:()=>enterFullscreen(),
+        tracer:(a,b,c)=>tracer(a,b,c)
+      };
+      // Start Firebase only after the engine globals above exist.
+      mpApplyProfile();if (typeof mpBoot === 'function') mpBoot();
+      const settings=document.getElementById('settings');document.getElementById('fullscreen-btn')?.addEventListener('click',async()=>{
+  try{
+    if(!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
+    else await document.exitFullscreen?.();
+  }catch(e){ console.warn('Fullscreen unavailable:',e); }
+});
+document.getElementById('open-settings').addEventListener('click',()=>settings.classList.add('open'));document.getElementById('close-settings').addEventListener('click',()=>settings.classList.remove('open'));
       document.getElementById('volume').addEventListener('input',e=>{config.volume=+e.target.value;proPersistConfig();if(masterGain)masterGain.gain.value=config.volume;});
       document.getElementById('ambience').addEventListener('input',e=>{config.ambience=+e.target.value;proPersistConfig();if(ambientGain)ambientGain.gain.value=config.ambience;});
       document.getElementById('sensitivity').addEventListener('input',e=>{config.sensitivity=+e.target.value;proPersistConfig();});
@@ -1645,7 +2663,12 @@ document.getElementById("mp-leave")?.addEventListener("click",async()=>{await mp
           if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{});
         }catch(e){}
       }
-      document.getElementById('start').addEventListener('click',()=>{enterFullscreen();startGame(true);});
+      document.getElementById('start').addEventListener('click',async()=>{
+        if(!document.getElementById('multiplayer-panel').classList.contains('active')){enterFullscreen();startGame(true);return;}
+        if(window.riftOnline&&window.riftIsHost){await mpStartFromRoom();return;}
+        if(window.riftOnline&&!window.riftIsHost)return;
+        mpShowCreatePage();
+      });
       document.getElementById('restart').addEventListener('click',()=>{enterFullscreen();startGame(true);});
 
       document.getElementById('pro-pause').addEventListener('click',()=>proSetPause(!proPaused));

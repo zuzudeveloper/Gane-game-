@@ -1434,17 +1434,27 @@ function mpShowError(error, context="MULTIPLAYER"){
 async function mpInit(){
   try{
     mpClearError();
-    if(!window.firebase) throw new Error("Firebase SDK did not load. Check your internet connection or CDN access.");
-    if(!riftFirebaseApp) riftFirebaseApp=firebase.initializeApp(RIFT_FIREBASE_CONFIG);
+    if(!window.firebase) throw new Error("Firebase SDK is not loaded.");
+    if(!riftFirebaseApp) riftFirebaseApp=firebase.apps?.length ? firebase.app() : firebase.initializeApp(RIFT_FIREBASE_CONFIG);
     riftAuth=firebase.auth();
     riftDB=firebase.database();
-    if(!riftAuth.currentUser) await riftAuth.signInAnonymously();
+    if(!riftAuth.currentUser){
+      await Promise.race([
+        riftAuth.signInAnonymously(),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("Firebase authentication timed out.")),10000))
+      ]);
+    }
     riftUser=riftAuth.currentUser;
-    if(!riftUser) throw new Error("Firebase authentication completed without a user.");
-    mpStatus("FIREBASE CONNECTED — anonymous player identity ready","ok");
+    if(!riftUser) throw new Error("Firebase did not return an authenticated user.");
+    // Verify the database connection with a harmless read before attempting room creation.
+    await Promise.race([
+      riftDB.ref("rooms").limitToFirst(1).once("value"),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error("Firebase Realtime Database connection timed out.")),10000))
+    ]);
+    mpStatus("FIREBASE CONNECTED — READY TO CREATE ROOM","ok");
     return true;
   }catch(e){
-    mpShowError(e,"FIREBASE INITIALIZATION");
+    mpShowError(e,"FIREBASE CONNECTION");
     throw e;
   }
 }
@@ -1466,48 +1476,68 @@ let mpCreateBusy=false;
 async function mpCreateRoom(){
   if(mpCreateBusy) return;
   mpCreateBusy=true;
-  await mpInit();
-  mpClearError();
-  const name=mpName(document.getElementById("mp-create-name")?.value||localStorage.getItem("riftProfileName")||"AGENT");
-  const roomName=(document.getElementById("mp-create-room-name")?.value||`${name}'s Room`).trim().slice(0,28);
-  const roomPassword=(document.getElementById("mp-create-password")?.value||"").trim();
-  const visibility=document.getElementById("mp-create-visibility")?.value||"public";
-  const map=document.getElementById("mp-create-map")?.value||"atlas";
-  const mode=document.getElementById("mp-create-mode")?.value||"range";
-  const matchSize=Math.min(4,Math.max(1,Number(document.getElementById("mp-create-size")?.value||4)));
-  const maxPlayers=matchSize*2;
-  const teamSize=matchSize;
-  const minPlayers=Math.min(maxPlayers,Math.max(2,Number(document.getElementById("mp-create-min-players")?.value||2)));
-  const perspective=document.getElementById("mp-create-perspective")?.value||"fpp";
-  const weather=document.getElementById("mp-create-weather")?.value||"clear";
-  const friendlyFire=!!document.getElementById("mp-create-friendly-fire")?.checked;
-  const spectators=!!document.getElementById("mp-create-spectators")?.checked;
-  const joinInProgress=!!document.getElementById("mp-create-join-progress")?.checked;
-  const teamBalance=document.getElementById("mp-create-team-balance")?.value||"auto";
-  if(visibility==="private"&&!roomPassword) throw Error("PRIVATE ROOM REQUIRES A PASSWORD.");
-  if(teamSize*2>maxPlayers) throw Error("TEAM SIZE IS TOO LARGE FOR THE SELECTED PLAYER LIMIT.");
-
-  let room=null,snap=null,n=0;
-  do{
-    room=mpCode();
-    snap=await riftDB.ref("rooms/"+room).once("value");
-    n++;
-  }while(snap.exists()&&n<12);
-  if(snap && snap.exists())throw Error("Could not allocate a unique room ID.");
-
-  window.__riftCreateSettings={
-    roomName,roomPassword,visibility,map,mode,matchSize,maxPlayers,teamSize,minPlayers,
-    perspective,weather,friendlyFire,spectators,joinInProgress,teamBalance
-  };
-
+  let room=null, created=false;
   try{
+    await mpInit();
+    mpClearError();
+    const name=mpName(document.getElementById("mp-create-name")?.value||localStorage.getItem("riftProfileName")||"AGENT");
+    const roomName=(document.getElementById("mp-create-room-name")?.value||`${name}'s Room`).trim().slice(0,28);
+    const roomPassword=(document.getElementById("mp-create-password")?.value||"").trim();
+    const visibility=document.getElementById("mp-create-visibility")?.value||"public";
+    const map=document.getElementById("mp-create-map")?.value||"atlas";
+    const mode=document.getElementById("mp-create-mode")?.value||"range";
+    const matchSize=Math.min(4,Math.max(1,Number(document.getElementById("mp-create-size")?.value||4)));
+    const maxPlayers=matchSize*2;
+    const teamSize=matchSize;
+    const minPlayers=Math.min(maxPlayers,Math.max(2,Number(document.getElementById("mp-create-min-players")?.value||2)));
+    const perspective=document.getElementById("mp-create-perspective")?.value||"fpp";
+    const weather=document.getElementById("mp-create-weather")?.value||"clear";
+    const friendlyFire=!!document.getElementById("mp-create-friendly-fire")?.checked;
+    const spectators=!!document.getElementById("mp-create-spectators")?.checked;
+    const joinInProgress=!!document.getElementById("mp-create-join-progress")?.checked;
+    const teamBalance=document.getElementById("mp-create-team-balance")?.value||"auto";
+    if(visibility==="private"&&!roomPassword) throw new Error("PRIVATE ROOM REQUIRES A PASSWORD.");
+
+    let snap=null;
+    for(let i=0;i<12;i++){
+      const candidate=mpCode();
+      snap=await riftDB.ref("rooms/"+candidate).once("value");
+      if(!snap.exists()){room=candidate;break;}
+    }
+    if(!room) throw new Error("Could not allocate a unique room ID. Please try again.");
+
+    window.__riftCreateSettings={roomName,roomPassword,visibility,map,mode,matchSize,maxPlayers,teamSize,minPlayers,perspective,weather,friendlyFire,spectators,joinInProgress,teamBalance};
+
+    // Create the complete room in one Firebase update so we never show a half-created room.
+    const roomMeta={
+      host:riftUser.uid,hostName:name,roomName,createdAt:firebase.database.ServerValue.TIMESTAMP,
+      maxPlayers,teamSize,matchSize,minPlayers,status:"lobby",mode,map,password:roomPassword,
+      visibility,perspective,weather,friendlyFire,spectators,joinInProgress,teamBalance
+    };
+    const player={uid:riftUser.uid,name,team:"red",ready:false,x:0,y:1.7,z:24,yaw:0,pitch:0,health:200,alive:true,weapon:window.riftGameConfig?.weapon||"R-301",updatedAt:firebase.database.ServerValue.TIMESTAMP};
+    const updates={};
+    updates[`rooms/${room}/meta`]=roomMeta;
+    updates[`rooms/${room}/players/${riftUser.uid}`]=player;
+    updates[`rooms/${room}/match`]={status:"lobby"};
+    await Promise.race([
+      riftDB.ref().update(updates),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error("Room creation timed out while writing to Firebase.")),10000))
+    ]);
+    created=true;
+
+    // Bind runtime refs only after Firebase confirms the room exists.
     await mpEnterRoom(room,name,true);
+    await riftDB.ref(`rooms/${room}/meta`).once("value");
     mpStatus("ROOM CREATED — WAITING FOR PLAYERS","ok");
   }catch(e){
-    // Do not leave a half-created lobby behind when a Firebase write/auth/network step fails.
-    try{ if(room && riftDB) await riftDB.ref("rooms/"+room).remove(); }catch(cleanupError){ console.warn("Room cleanup failed",cleanupError); }
-    if(riftRoomId===room) await mpLeaveRoom(false).catch(()=>{});
+    if(created && room && riftDB){
+      try{ await riftDB.ref(`rooms/${room}`).remove(); }catch(cleanupError){ console.warn("Room cleanup failed",cleanupError); }
+    }
+    if(riftRoomId===room){ try{ await mpLeaveRoom(false); }catch(_){} }
+    mpShowError(e,"CREATE ROOM FAILED");
     throw e;
+  }finally{
+    mpCreateBusy=false;
   }
 }
 async function mpJoinRoom(roomOverride="",passwordOverride=""){
@@ -1535,10 +1565,9 @@ async function mpEnterRoom(room,name,isHost){
     const roomMode=document.getElementById("mp-create-mode")?.value||document.getElementById("mp-room-mode-select")?.value||window.riftGameConfig.mode;
     window.riftGameConfig.map=roomMap;window.riftGameConfig.mode=roomMode;
     const cs=window.__riftCreateSettings||{};
-    await base.child("meta").set({
-      host:riftUser.uid,hostName:name,roomName:cs.roomName||`${name}'s Room`,
-      createdAt:firebase.database.ServerValue.TIMESTAMP,
-      maxPlayers:Number(cs.maxPlayers||8),teamSize:Number(cs.teamSize||4),matchSize:Number(cs.matchSize||4),minPlayers:Number(cs.minPlayers||2),
+    await base.child("meta").update({
+      host:riftUser.uid,hostName:name,
+      roomName:cs.roomName||`${name}'s Room`,
       status:"lobby",mode:roomMode,map:roomMap,password:roomPassword,
       visibility:cs.visibility||"public",perspective:cs.perspective||"fpp",weather:cs.weather||"clear",
       friendlyFire:!!cs.friendlyFire,spectators:!!cs.spectators,joinInProgress:!!cs.joinInProgress,
@@ -1719,21 +1748,15 @@ document.getElementById("mp-create-max-players")?.addEventListener("change",e=>{
   if(Number(sel.value)>max)sel.value=String(max);
 });
 
-document.getElementById("mp-create-confirm")?.addEventListener("click",async()=>{
-  const b=document.getElementById("mp-create-confirm");
-  if(!b)return;
+document.getElementById("mp-create-confirm")?.addEventListener("click",async(e)=>{
+  e.preventDefault();
+  const b=e.currentTarget;
+  if(mpCreateBusy||b.disabled)return;
   b.disabled=true;
-  b.textContent="CREATING ROOM…";
-  mpClearError();
-  try{
-    await mpCreateRoom();
-  }catch(e){
-    mpShowError(e,"CREATE ROOM FAILED");
-  }finally{
-    mpCreateBusy=false;
-    b.disabled=false;
-    b.textContent="CREATE ROOM";
-  }
+  b.textContent="CREATING…";
+  try{ await mpCreateRoom(); }
+  catch(err){ mpShowError(err,"CREATE ROOM FAILED"); }
+  finally{ b.disabled=false; b.textContent="CREATE ROOM"; }
 });
 document.getElementById("mp-search")?.addEventListener("input",e=>mpRefreshOpenRooms(e.target.value));
 document.getElementById("mp-search-clear")?.addEventListener("click",()=>{document.getElementById("mp-search").value="";mpRefreshOpenRooms("");});

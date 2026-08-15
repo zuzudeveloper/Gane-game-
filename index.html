@@ -430,7 +430,7 @@ import {
   getDatabase, ref, set, get, update, onValue, remove, push
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
-const firebaseConfig = {"apiKey":"AIzaSyAno-7VeL1qpoPd1Vdr8xc4PGBDk_wnGiE","authDomain":"greek-1bbe4.firebaseapp.com","databaseURL":"https://greek-1bbe4-default-rtdb.asia-southeast1.firebasedatabase.app"","projectId":"greek-1bbe4","storageBucket":"greek-1bbe4.firebasestorage.app","messagingSenderId":"115908050861","appId":"1:115908050861:web:247e154565ce2fcf5eab24","measurementId":"G-Y0SGMGYYSH"};
+const firebaseConfig = {"apiKey":"AIzaSyAno-7VeL1qpoPd1Vdr8xc4PGBDk_wnGiE","authDomain":"greek-1bbe4.firebaseapp.com","databaseURL":"https://greek-1bbe4-default-rtdb.asia-southeast1.firebasedatabase.app","projectId":"greek-1bbe4","storageBucket":"greek-1bbe4.firebasestorage.app","messagingSenderId":"115908050861","appId":"1:115908050861:web:247e154565ce2fcf5eab24","measurementId":"G-Y0SGMGYYSH"};
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
@@ -742,4 +742,4 @@ $("leaveRoomBtn").onclick=async()=>{
 window.addEventListener("beforeunload",()=>{ if(currentRoomId&&currentUser) remove(ref(db,"greekRooms/"+currentRoomId+"/players/"+currentUser.uid)); });
 </script>
 </body>
-                                 </html>
+</html>

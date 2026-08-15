@@ -239,7 +239,7 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .mp-error-box.show { display: block; }
+    .mp-error-box.show { display: block; position:relative; z-index:9999; }
     .mp-error-box strong {
       display: block;
       color: #ff4655;
@@ -794,7 +794,8 @@ html,body,#start-screen,.lobby,.lobby-main,.panel{overflow:hidden!important;}
 #multiplayer-panel.active .mp-open-row .mp-btn{padding:5px 7px!important;font-size:6px!important;}
 #multiplayer-panel.active .mp-empty{padding:8px 0!important;font-size:7px!important;}
 #multiplayer-panel.active .mp-create-bottom{width:180px!important;justify-self:end!important;height:36px!important;padding:0!important;font-size:9px!important;margin:0!important;}
-#multiplayer-panel.active .mp-status-wrap,#multiplayer-panel.active .mp-error-box{display:none!important;}
+#multiplayer-panel.active .mp-status-wrap{display:none!important;}
+#multiplayer-panel.active .mp-error-box.show{display:block!important;}
 body.mp-create-mode #multiplayer-panel{padding:8px 14px!important;}
 body.mp-create-mode #mp-create-page{width:min(100%,980px)!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:5px!important;}
 body.mp-create-mode .mp-create-head{min-height:38px!important;}
@@ -981,6 +982,32 @@ body.mp-create-mode #mp-create-page .mp-create-section::-webkit-scrollbar-track 
 @media (orientation:landscape) and (max-height:520px) {
   #play-panel .play-start-wrap { top:-30px !important; margin-top:-10px !important; }
 }
+
+/* FINAL TOUCH FIX: keep decorative layers from intercepting mobile taps. */
+#start-screen::after { pointer-events:none !important; }
+#start-screen { pointer-events:auto !important; }
+#start-screen > .lobby { pointer-events:auto !important; z-index:50 !important; }
+#start-screen .lobby-top,
+#start-screen .tabs,
+#start-screen .tab,
+#start-screen .top-actions,
+#start-screen .panel,
+#start-screen .panel.active,
+#start-screen button,
+#start-screen input,
+#start-screen select,
+#start-screen label,
+#start-screen .mp-home,
+#start-screen #mp-create-page,
+#start-screen #mp-room-page { pointer-events:auto !important; }
+#start-screen button, #start-screen input, #start-screen select { touch-action:manipulation !important; }
+body.mp-create-mode #start-screen > .lobby { position:relative !important; z-index:50 !important; }
+body.mp-create-mode #multiplayer-panel { position:relative !important; z-index:51 !important; }
+body.mp-create-mode #mp-create-page { position:relative !important; z-index:52 !important; }
+body.mp-create-mode #mp-create-page button,
+body.mp-create-mode #mp-create-page input,
+body.mp-create-mode #mp-create-page select { pointer-events:auto !important; touch-action:manipulation !important; }
+
 </style>
 </head>
 <body>
@@ -1160,7 +1187,7 @@ body.mp-create-mode #mp-create-page .mp-create-section::-webkit-scrollbar-track 
               <div class="mp-search"><input id="mp-search" class="mp-input" maxlength="24" placeholder="SEARCH ROOM ID / HOST"><button id="mp-search-clear" class="mp-btn">CLEAR</button></div>
               <div id="mp-open-rooms" class="mp-room-list"><div class="mp-empty">SEARCHING FOR ROOMS…</div></div>
             </div>
-            <button class="mp-btn primary mp-create-bottom" id="mp-create-bottom">+ CREATE ROOM</button>
+            <button class="mp-btn primary mp-create-bottom" id="mp-create-bottom" type="button">+ CREATE ROOM</button>
             <div class="mp-status-wrap"><div id="mp-status">CONNECTING TO MULTIPLAYER…</div></div>
             <div id="mp-error-box" class="mp-error-box">
               <strong>FIREBASE / MULTIPLAYER ERROR</strong>
@@ -1174,7 +1201,7 @@ body.mp-create-mode #mp-create-page .mp-create-section::-webkit-scrollbar-track 
       <small>NEW MULTIPLAYER ROOM</small>
       <div class="mp-create-title">CREATE ROOM</div>
     </div>
-    <button class="mp-btn" id="mp-create-back">BACK</button>
+    <button class="mp-btn" id="mp-create-back" type="button">BACK</button>
   </div>
 
   <div class="mp-create-grid">
@@ -1304,7 +1331,7 @@ body.mp-create-mode #mp-create-page .mp-create-section::-webkit-scrollbar-track 
   </div>
 
   <div class="mp-create-actions">
-    <button class="mp-btn primary mp-create-confirm-large" id="mp-create-confirm">CREATE ROOM</button>
+    <button class="mp-btn primary mp-create-confirm-large" id="mp-create-confirm" type="button">CREATE ROOM</button>
   </div>
 </div>
 
@@ -1473,13 +1500,22 @@ function mpSyncMatchSize(){
 document.getElementById("mp-create-size")?.addEventListener("change",mpSyncMatchSize);
 
 let mpCreateBusy=false;
+
+function mpWithTimeout(promise, ms, message){
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject)=>setTimeout(()=>reject(new Error(message)), ms))
+  ]);
+}
+
 async function mpCreateRoom(){
-  if(mpCreateBusy) return;
+  if(mpCreateBusy) return false;
   mpCreateBusy=true;
   let room=null, created=false;
   try{
-    await mpInit();
+    await mpWithTimeout(mpInit(),10000,"Firebase initialization timed out. Check Authentication and Realtime Database.");
     mpClearError();
+
     const name=mpName(document.getElementById("mp-create-name")?.value||localStorage.getItem("riftProfileName")||"AGENT");
     const roomName=(document.getElementById("mp-create-room-name")?.value||`${name}'s Room`).trim().slice(0,28);
     const roomPassword=(document.getElementById("mp-create-password")?.value||"").trim();
@@ -1496,50 +1532,88 @@ async function mpCreateRoom(){
     const spectators=!!document.getElementById("mp-create-spectators")?.checked;
     const joinInProgress=!!document.getElementById("mp-create-join-progress")?.checked;
     const teamBalance=document.getElementById("mp-create-team-balance")?.value||"auto";
+
     if(visibility==="private"&&!roomPassword) throw new Error("PRIVATE ROOM REQUIRES A PASSWORD.");
 
-    let snap=null;
     for(let i=0;i<12;i++){
       const candidate=mpCode();
-      snap=await riftDB.ref("rooms/"+candidate).once("value");
-      if(!snap.exists()){room=candidate;break;}
+      const snap=await mpWithTimeout(
+        riftDB.ref("rooms/"+candidate).once("value"),
+        6000,
+        "Could not check room availability."
+      );
+      if(!snap.exists()){ room=candidate; break; }
     }
     if(!room) throw new Error("Could not allocate a unique room ID. Please try again.");
 
     window.__riftCreateSettings={roomName,roomPassword,visibility,map,mode,matchSize,maxPlayers,teamSize,minPlayers,perspective,weather,friendlyFire,spectators,joinInProgress,teamBalance};
 
-    // Create the complete room in one Firebase update so we never show a half-created room.
     const roomMeta={
-      host:riftUser.uid,hostName:name,roomName,createdAt:firebase.database.ServerValue.TIMESTAMP,
-      maxPlayers,teamSize,matchSize,minPlayers,status:"lobby",mode,map,password:roomPassword,
-      visibility,perspective,weather,friendlyFire,spectators,joinInProgress,teamBalance
+      host:riftUser.uid,hostName:name,roomName,
+      createdAt:firebase.database.ServerValue.TIMESTAMP,
+      maxPlayers,teamSize,matchSize,minPlayers,status:"lobby",mode,map,
+      password:roomPassword,visibility,perspective,weather,
+      friendlyFire,spectators,joinInProgress,teamBalance
     };
-    const player={uid:riftUser.uid,name,team:"red",ready:false,x:0,y:1.7,z:24,yaw:0,pitch:0,health:200,alive:true,weapon:window.riftGameConfig?.weapon||"R-301",updatedAt:firebase.database.ServerValue.TIMESTAMP};
+
+    const player={
+      uid:riftUser.uid,name,team:"red",ready:false,
+      x:0,y:1.7,z:24,yaw:0,pitch:0,health:200,alive:true,
+      weapon:window.riftGameConfig?.weapon||"R-301",
+      updatedAt:firebase.database.ServerValue.TIMESTAMP
+    };
+
     const updates={};
     updates[`rooms/${room}/meta`]=roomMeta;
     updates[`rooms/${room}/players/${riftUser.uid}`]=player;
     updates[`rooms/${room}/match`]={status:"lobby"};
-    await Promise.race([
+
+    // Exactly one atomic room write.
+    await mpWithTimeout(
       riftDB.ref().update(updates),
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error("Room creation timed out while writing to Firebase.")),10000))
-    ]);
+      10000,
+      "Room creation timed out while saving to Firebase."
+    );
     created=true;
 
-    // Bind runtime refs only after Firebase confirms the room exists.
-    await mpEnterRoom(room,name,true);
-    await riftDB.ref(`rooms/${room}/meta`).once("value");
+    // Enter the newly created room, but never leave the button stuck indefinitely.
+    await mpWithTimeout(
+      mpEnterRoom(room,name,true),
+      10000,
+      "Room was saved, but opening the room lobby timed out."
+    );
+
+    const verify=await mpWithTimeout(
+      riftDB.ref(`rooms/${room}/meta`).once("value"),
+      6000,
+      "Room was created, but Firebase verification timed out."
+    );
+    if(!verify.exists()) throw new Error("Firebase did not return the newly created room.");
+
     mpStatus("ROOM CREATED — WAITING FOR PLAYERS","ok");
+    return true;
+
   }catch(e){
     if(created && room && riftDB){
-      try{ await riftDB.ref(`rooms/${room}`).remove(); }catch(cleanupError){ console.warn("Room cleanup failed",cleanupError); }
+      try{ await mpWithTimeout(riftDB.ref(`rooms/${room}`).remove(),5000,""); }catch(cleanupError){ console.warn("Room cleanup failed",cleanupError); }
     }
-    if(riftRoomId===room){ try{ await mpLeaveRoom(false); }catch(_){} }
+    if(riftRoomId===room){
+      try{ await mpLeaveRoom(false); }catch(_){}
+    }
     mpShowError(e,"CREATE ROOM FAILED");
     throw e;
   }finally{
+    // This flag is always cleared, including timeout/error paths.
     mpCreateBusy=false;
+    const b=document.getElementById("mp-create-confirm");
+    if(b){
+      b.disabled=false;
+      b.removeAttribute("aria-busy");
+      b.textContent="CREATE ROOM";
+    }
   }
 }
+
 async function mpJoinRoom(roomOverride="",passwordOverride=""){
   await mpInit();const room=(roomOverride||document.getElementById("mp-search")?.value||"").trim().toUpperCase();
   if(!/^[A-Z0-9]{6}$/.test(room)){mpStatus("ENTER A VALID 6-CHARACTER ROOM ID.","err");return;}
@@ -1750,13 +1824,25 @@ document.getElementById("mp-create-max-players")?.addEventListener("change",e=>{
 
 document.getElementById("mp-create-confirm")?.addEventListener("click",async(e)=>{
   e.preventDefault();
+  e.stopImmediatePropagation();
   const b=e.currentTarget;
-  if(mpCreateBusy||b.disabled)return;
+  if(mpCreateBusy || b.disabled) return;
+  mpCreateBusy=true;
   b.disabled=true;
+  b.setAttribute("aria-busy","true");
   b.textContent="CREATING…";
-  try{ await mpCreateRoom(); }
-  catch(err){ mpShowError(err,"CREATE ROOM FAILED"); }
-  finally{ b.disabled=false; b.textContent="CREATE ROOM"; }
+  try{
+    // mpCreateRoom sees the busy flag, so temporarily release it for the actual transaction.
+    mpCreateBusy=false;
+    await mpCreateRoom();
+  }catch(err){
+    mpShowError(err,"CREATE ROOM FAILED");
+  }finally{
+    mpCreateBusy=false;
+    b.disabled=false;
+    b.removeAttribute("aria-busy");
+    b.textContent="CREATE ROOM";
+  }
 });
 document.getElementById("mp-search")?.addEventListener("input",e=>mpRefreshOpenRooms(e.target.value));
 document.getElementById("mp-search-clear")?.addEventListener("click",()=>{document.getElementById("mp-search").value="";mpRefreshOpenRooms("");});
